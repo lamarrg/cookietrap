@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DomainGuard — M8 Hardening Tests</title>
+  <style>
+    body { font-family: monospace; font-size: 14px; padding: 16px; }
+    .pass { color: green; }
+    .fail { color: red; }
+    h2 { margin-top: 24px; }
+    #results { white-space: pre-wrap; }
+    hr { margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <h1>DomainGuard — M8 Hardening Tests</h1>
+  <p>Structural assertions verifying error handling, storage quota pruning, bot detection validation, and graceful degradation.</p>
+  <div id="results"></div>
+
+  <script>
+    const results = document.getElementById("results");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(label, condition) {
+      if (condition) {
+        results.innerHTML += `<span class="pass">PASS</span> ${label}\n`;
+        passed++;
+      } else {
+        results.innerHTML += `<span class="fail">FAIL</span> ${label}\n`;
+        failed++;
+      }
+    }
+
+    async function runTests() {
+      results.innerHTML = "Running structural tests...\n\n";
+
+      // ========== 1. DELETION.JS — ERROR HANDLING ==========
+      results.innerHTML += "<h2>1. deletion.js — Error Handling</h2>\n";
+
+      let deletionJs = "";
+      try {
+        const resp = await fetch("../background/deletion.js");
+        assert("deletion.js exists and is fetchable", resp.ok);
+        deletionJs = await resp.text();
+
+        // Extract deleteCookie function body
+        const deleteCookieMatch = deletionJs.match(/async function deleteCookie[\s\S]*?(?=\n    async function|\n    function|\n    return \{)/);
+        const deleteCookieBody = deleteCookieMatch ? deleteCookieMatch[0] : "";
+
+        assert("deleteCookie has try/catch around browser.cookies.remove",
+          deleteCookieBody.includes("try") && deleteCookieBody.includes("catch") &&
+          deleteCookieBody.includes("browser.cookies.remove"));
+
+        assert("deleteCookie returns {success: false} on catch",
+          deleteCookieBody.includes("success: false"));
+
+        assert("deleteCookie returns {success: true} on success",
+          deleteCookieBody.includes("success: true"));
+
+        // Extract deleteStorageItem function body
+        const deleteStorageItemMatch = deletionJs.match(/async function deleteStorageItem[\s\S]*?(?=\n    async function|\n    function|\n    return \{)/);
+        const deleteStorageItemBody = deleteStorageItemMatch ? deleteStorageItemMatch[0] : "";
+
+        assert("deleteStorageItem has try/catch",
+          deleteStorageItemBody.includes("try") && deleteStorageItemBody.includes("catch"));
+
+        assert("deleteStorageItem returns {success: false} on catch",
+          deleteStorageItemBody.includes("success: false"));
+
+        // Extract clearStorage function body
+        const clearStorageMatch = deletionJs.match(/async function clearStorage[\s\S]*?(?=\n    async function|\n    function|\n    return \{)/);
+        const clearStorageBody = clearStorageMatch ? clearStorageMatch[0] : "";
+
+        assert("clearStorage has try/catch and returns {success: false} on catch",
+          clearStorageBody.includes("try") && clearStorageBody.includes("catch") &&
+          clearStorageBody.includes("success: false"));
+
+      } catch (e) {
+        assert("deletion.js exists and is fetchable", false);
+      }
+
+      // ========== 2. MAIN.JS — MESSAGE ROUTER ERROR HANDLING ==========
+      results.innerHTML += "<h2>2. main.js — Message Router Error Handling</h2>\n";
+
+      let mainJs = "";
+      try {
+        const resp = await fetch("../background/main.js");
+        assert("main.js exists and is fetchable", resp.ok);
+        mainJs = await resp.text();
+
+        assert("delete-cookie handler has .catch",
+          mainJs.includes('"delete-cookie"') &&
+          /delete-cookie[\s\S]*?\.catch/m.test(mainJs));
+
+        assert("delete-all-cookies handler has try/catch",
+          mainJs.includes('"delete-all-cookies"') &&
+          /delete-all-cookies[\s\S]*?try\s*\{/m.test(mainJs));
+
+        assert("delete-storage-item handler has .catch",
+          mainJs.includes('"delete-storage-item"') &&
+          /delete-storage-item[\s\S]*?\.catch/m.test(mainJs));
+
+        assert("clear-storage handler has .catch",
+          mainJs.includes('"clear-storage"') &&
+          /clear-storage[\s\S]*?\.catch/m.test(mainJs));
+
+        assert("delete-third-party-cookie handler exists",
+          mainJs.includes('"delete-third-party-cookie"'));
+
+        assert("delete-third-party-cookie uses cookies.getAll for lookup",
+          /delete-third-party-cookie[\s\S]*?cookies\.getAll/m.test(mainJs));
+
+        assert("delete-third-party-cookie finds matching cookie by path",
+          /delete-third-party-cookie[\s\S]*?path/m.test(mainJs));
+
+      } catch (e) {
+        assert("main.js exists and is fetchable", false);
+      }
+
+      // ========== 3. PANEL.JS — ERROR FLASH INDICATOR ==========
+      results.innerHTML += "<h2>3. panel.js — Error Flash Indicator</h2>\n";
+
+      let panelJs = "";
+      try {
+        const resp = await fetch("../panel/panel.js");
+        assert("panel.js exists and is fetchable", resp.ok);
+        panelJs = await resp.text();
+
+        assert("showErrorFlash function defined",
+          panelJs.includes("function showErrorFlash"));
+
+        assert("showErrorFlash adds error-flash class",
+          /showErrorFlash[\s\S]*?classList\.add\(["']error-flash["']\)/m.test(panelJs));
+
+        assert("showErrorFlash removes error-flash class after timeout",
+          /showErrorFlash[\s\S]*?classList\.remove\(["']error-flash["']\)/m.test(panelJs));
+
+        assert("showErrorFlash uses 3000ms timeout",
+          /showErrorFlash[\s\S]*?3000/m.test(panelJs));
+
+        assert("Cookie delete handler checks response.success",
+          /delete-cookie[\s\S]*?response\.success|deleteCookie[\s\S]*?response\.success|\.success/.test(panelJs) &&
+          panelJs.includes("response.success"));
+
+        assert("Storage delete handler checks response.success",
+          panelJs.includes("response.success"));
+
+      } catch (e) {
+        assert("panel.js exists and is fetchable", false);
+      }
+
+      // ========== 4. PANEL.JS — THIRD-PARTY DELETE VIA LOOKUP ==========
+      results.innerHTML += "<h2>4. panel.js — Third-Party Delete via Lookup</h2>\n";
+
+      // Find the third-party delete handler section
+      assert("Third-party delete uses delete-third-party-cookie message type",
+        panelJs.includes('"delete-third-party-cookie"'));
+
+      assert("Third-party delete sends thirdPartyDomain, cookieName, cookiePath",
+        panelJs.includes("thirdPartyDomain") &&
+        panelJs.includes("cookieName") &&
+        panelJs.includes("cookiePath"));
+
+      // The delete-third-party-cookie message send should NOT contain hardcoded secure: true
+      // Extract just the third-party delete handler area
+      const tpDeleteMatch = panelJs.match(/delete-third-party-cookie[\s\S]*?sendMessage\(\{[\s\S]*?\}\)/);
+      const tpDeleteSection = tpDeleteMatch ? tpDeleteMatch[0] : "";
+      assert("No hardcoded secure: true for third-party individual delete",
+        tpDeleteSection.length > 0 && !tpDeleteSection.includes("secure: true"));
+
+      // ========== 5. PANEL.CSS — ERROR FLASH STYLES ==========
+      results.innerHTML += "<h2>5. panel.css — Error Flash Styles</h2>\n";
+
+      try {
+        const resp = await fetch("../panel/panel.css");
+        assert("panel.css exists and is fetchable", resp.ok);
+        const panelCss = await resp.text();
+
+        assert(".error-flash rule exists",
+          panelCss.includes(".error-flash"));
+
+        assert(".error-flash has background-color",
+          /\.error-flash[\s\S]*?background-color/m.test(panelCss));
+
+      } catch (e) {
+        assert("panel.css exists and is fetchable", false);
+      }
+
+      // ========== 6. CONTENT SCRIPT AUDIT ==========
+      results.innerHTML += "<h2>6. Content Script Audit</h2>\n";
+
+      let storageReaderJs = "";
+      try {
+        const resp = await fetch("../content/storage-reader.js");
+        assert("storage-reader.js exists and is fetchable", resp.ok);
+        storageReaderJs = await resp.text();
+
+        assert("No document.createElement calls",
+          !storageReaderJs.includes("document.createElement"));
+
+        assert("No document.querySelector calls",
+          !storageReaderJs.includes("document.querySelector"));
+
+        assert("No innerHTML usage",
+          !storageReaderJs.includes("innerHTML"));
+
+        assert("No XMLHttpRequest usage",
+          !storageReaderJs.includes("XMLHttpRequest"));
+
+        assert("No fetch() calls",
+          !storageReaderJs.includes("fetch("));
+
+        assert("No setInterval or setTimeout calls",
+          !storageReaderJs.includes("setInterval") && !storageReaderJs.includes("setTimeout"));
+
+        assert("Handles only 3 message types: read-storage, delete-storage-item, clear-storage",
+          storageReaderJs.includes('"read-storage"') &&
+          storageReaderJs.includes('"delete-storage-item"') &&
+          storageReaderJs.includes('"clear-storage"') &&
+          !(storageReaderJs.replace(/"read-storage"/g, "")
+            .replace(/"delete-storage-item"/g, "")
+            .replace(/"clear-storage"/g, "")
+            .match(/message\.type\s*===?\s*"/)));
+
+      } catch (e) {
+        assert("storage-reader.js exists and is fetchable", false);
+      }
+
+      // ========== 7. BOT DETECTION — NO POLLING PATTERNS ==========
+      results.innerHTML += "<h2>7. Bot Detection — No Polling Patterns</h2>\n";
+
+      assert("No setInterval calls in panel.js",
+        !panelJs.includes("setInterval"));
+
+      assert("All refreshes are event-driven (debouncedRefresh uses setTimeout not setInterval)",
+        panelJs.includes("setTimeout") && !panelJs.includes("setInterval"));
+
+      assert("refreshData is called from loadTab (event-driven, not polled)",
+        panelJs.includes("refreshData") && panelJs.includes("loadTab"));
+
+      assert("No XMLHttpRequest or fetch calls from panel.js (all data via browser.runtime.sendMessage)",
+        !panelJs.includes("XMLHttpRequest") && !panelJs.includes("fetch("));
+
+      // ========== 8. CONSOLE LOGGING STANDARDS ==========
+      results.innerHTML += "<h2>8. Console Logging Standards</h2>\n";
+
+      assert("deletion.js uses [DomainGuard] prefix in console.log",
+        /console\.log\(\s*["'`]\[DomainGuard\]/.test(deletionJs));
+
+      assert("deletion.js uses [DomainGuard] prefix in console.error",
+        /console\.error\(\s*["'`]\[DomainGuard\]/.test(deletionJs));
+
+      assert("main.js uses [DomainGuard] prefix",
+        /console\.(log|error|warn)\(\s*["'`]\[DomainGuard\]/.test(mainJs));
+
+      let tabTrackerJs = "";
+      try {
+        const resp = await fetch("../background/tab-tracker.js");
+        tabTrackerJs = await resp.text();
+      } catch (e) {}
+      assert("tab-tracker.js uses [DomainGuard] prefix",
+        /console\.(log|error|warn)\(\s*["'`]\[DomainGuard\]/.test(tabTrackerJs));
+
+      let requestLoggerJs = "";
+      try {
+        const resp = await fetch("../background/request-logger.js");
+        requestLoggerJs = await resp.text();
+      } catch (e) {}
+      assert("request-logger.js uses [DomainGuard] prefix",
+        /console\.(log|error|warn)\(\s*["'`]\[DomainGuard\]/.test(requestLoggerJs));
+
+      // ========== SUMMARY ==========
+      results.innerHTML += "\n<hr>\n";
+      results.innerHTML += `<strong>Total: ${passed + failed} | `;
+      results.innerHTML += `<span class="pass">Passed: ${passed}</span> | `;
+      results.innerHTML += `<span class="fail">Failed: ${failed}</span></strong>\n`;
+
+      // ========== MANUAL TEST PROCEDURES ==========
+      results.innerHTML += "\n<hr>\n";
+      results.innerHTML += "<h2>Manual Test Procedures</h2>\n";
+      results.innerHTML += "Run these in Firefox via about:debugging after loading the extension.\n\n";
+
+      results.innerHTML += "<h3>M-1: Bot Detection Validation</h3>\n";
+      results.innerHTML += "1. Browse walmart.com for 10+ minutes — no CAPTCHA\n";
+      results.innerHTML += "2. Browse amazon.com for 10+ minutes — no bot detection\n";
+      results.innerHTML += "3. Browse a banking site — no unusual security prompts\n";
+      results.innerHTML += "4. Panel closed: verify zero read-storage messages\n";
+      results.innerHTML += "5. Panel open: verify read-storage only on load/tab switch/deletion broadcast\n";
+      results.innerHTML += "6. Inspect page DOM before/after install — zero nodes added by content script\n\n";
+
+      results.innerHTML += "<h3>M-2: Error Handling</h3>\n";
+      results.innerHTML += '7. Navigate to about:newtab — "No domain data available" appears instantly\n';
+      results.innerHTML += '8. On unresponsive content script page — 2s timeout shows "Storage data unavailable"\n';
+      results.innerHTML += "9. Force cookie delete failure — verify error flash appears, auto-dismisses in 3s\n";
+      results.innerHTML += "10. Force browsingData.remove failure — verify [DomainGuard] error in console\n";
+      results.innerHTML += "11. Force cookies.getAll failure in batch — verify error logged, rest of batch continues\n\n";
+
+      results.innerHTML += "<h3>M-3: Storage Quota</h3>\n";
+      results.innerHTML += "12. Populate 1000+ records with some >30 days old\n";
+      results.innerHTML += "13. Trigger batch — verify pruneOldRecords removes old entries\n";
+      results.innerHTML += "14. Verify recent entries preserved\n";
+      results.innerHTML += "15. Verify pruning runs at most once per batch cycle\n\n";
+
+      results.innerHTML += "<h3>M-4: Stress Tests</h3>\n";
+      results.innerHTML += "16. Rapidly switch 10+ tabs — no console errors, stale responses discarded\n";
+      results.innerHTML += "17. Open 20+ tabs, close all — onDomainClosed fires for each, auto-delete runs\n";
+      results.innerHTML += "18. After closing all tabs — TabTracker Maps empty (no leaked entries)\n";
+      results.innerHTML += "19. Verify auto-delete uses browsingData.remove with hostnames, not origin URLs\n";
+      results.innerHTML += "20. Verify auto-delete does NOT call tabs.sendMessage\n";
+      results.innerHTML += "21. Toggle state survives extension restart\n";
+      results.innerHTML += "22. Extension running 30+ min — no memory leaks (check about:debugging)\n";
+      results.innerHTML += "23. Panel with 100+ third-party items — lazy rendering works, no freeze\n";
+      results.innerHTML += "24. 10 rapid deletions — debouncedRefresh coalesces into 1-2 actual refreshes\n";
+      results.innerHTML += "25. Delete a third-party cookie via new lookup-based handler — verify it works for both secure and non-secure cookies\n\n";
+
+      results.innerHTML += "<h3>M-5: Graceful Degradation</h3>\n";
+      results.innerHTML += "26. Remove content script from manifest — cookies still display, storage shows unavailable\n";
+      results.innerHTML += "27. Site that blocks content scripts — cookies display, storage degrades\n";
+      results.innerHTML += "28. Third-party section renders independently of content script\n";
+      results.innerHTML += "29. Each panel section can fail independently (Promise.all)\n";
+      results.innerHTML += '30. Navigate to restricted URL — "No domain data available" instantly\n\n';
+
+      results.innerHTML += "<h3>M-6: Popup and Entry Points</h3>\n";
+      results.innerHTML += "31. Extension icon — popup at ~220px with two buttons\n";
+      results.innerHTML += '32. "Open Sidebar" — sidebar opens before popup dismisses\n';
+      results.innerHTML += '33. "Open Detached Window" — 400x600 window with correct URL\n';
+      results.innerHTML += "34. Sidebar iframe scrolling works\n";
+      results.innerHTML += "35. Detached window graceful resize\n";
+    }
+
+    runTests();
+  </script>
+</body>
+</html>

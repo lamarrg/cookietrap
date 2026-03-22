@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TabTracker Tests</title>
+  <style>
+    body { font-family: monospace; margin: 2em; background: #1a1a2e; color: #e0e0e0; }
+    h1 { color: #00d4ff; }
+    h2 { color: #aaa; margin-top: 2em; }
+    .pass { color: #4caf50; }
+    .fail { color: #f44336; font-weight: bold; }
+    .section { margin: 1em 0; padding: 1em; background: #16213e; border-radius: 4px; }
+    pre { background: #0f3460; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    #summary { font-size: 1.2em; margin-top: 2em; padding: 1em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>TabTracker Tests</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+  <h2>Manual Test Procedures</h2>
+  <div class="section">
+    <p>These tests must be run in Firefox via about:debugging with the extension loaded:</p>
+    <pre>
+1. Open 3 tabs to walmart.com
+   → Check background console: count should show 3
+
+2. Close 1 tab
+   → Count decrements to 2
+
+3. Close remaining 2 tabs
+   → Count reaches 0, "Close timer started" logged
+   → After 500ms, "Domain closed: walmart.com" logged
+
+4. Open 3 tabs to walmart.com, close all, then within 500ms open a new walmart.com tab
+   → "Close timer cancelled" logged, count = 1
+
+5. Navigate a tab from walmart.com to target.com
+   → walmart.com count decrements, target.com count increments
+
+6. Open about:newtab
+   → No tracking — restricted URL ignored
+
+7. Restart the extension via about:debugging
+   → "TabTracker initialized" log with correct tab/domain counts
+
+8. Run in background console:
+   TabTracker.getDomainForTab(tabId)  → returns domain for a known tab
+   TabTracker.getTabCount("walmart.com")  → returns current count
+    </pre>
+  </div>
+
+  <!-- Load DomainUtils dependency (needed by TabTracker) -->
+  <script src="../utils/domain.js"></script>
+
+  <script>
+    // Provide a mock browser API so TabTracker can be loaded outside Firefox
+    if (typeof browser === "undefined") {
+      window.browser = {
+        tabs: {
+          query: () => Promise.resolve([]),
+          onCreated: { addListener: () => {} },
+          onUpdated: { addListener: () => {} },
+          onRemoved: { addListener: () => {} },
+        },
+      };
+    }
+  </script>
+
+  <!-- Load TabTracker -->
+  <script src="../background/tab-tracker.js"></script>
+
+  <script>
+    const results = document.getElementById("results");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(condition, description) {
+      if (condition) {
+        passed++;
+        results.innerHTML += `<div class="pass">✓ ${description}</div>`;
+      } else {
+        failed++;
+        results.innerHTML += `<div class="fail">✗ ${description}</div>`;
+      }
+    }
+
+    // --- Structural tests ---
+    assert(typeof TabTracker === "object", "TabTracker global exists");
+    assert(typeof TabTracker.getDomainForTab === "function", "getDomainForTab is a function");
+    assert(typeof TabTracker.getTabCount === "function", "getTabCount is a function");
+    assert(typeof TabTracker.onDomainClosed === "function", "onDomainClosed is a function");
+    assert(typeof TabTracker.init === "function", "init is a function");
+
+    // --- Behavioral tests (using init to set up state) ---
+
+    async function runAsyncTests() {
+      // init() with mock browser.tabs.query returning empty — should work cleanly
+      await TabTracker.init();
+      assert(true, "init() completes without error on empty tab set");
+
+      // After init with no tabs, counts should be 0
+      assert(TabTracker.getTabCount("walmart.com") === 0, "getTabCount returns 0 for untracked domain");
+      assert(TabTracker.getDomainForTab(999) === null, "getDomainForTab returns null for unknown tab");
+
+      // --- Summary ---
+      const summary = document.getElementById("summary");
+      const total = passed + failed;
+      if (failed === 0) {
+        summary.innerHTML = `<span class="pass">All ${total} tests passed.</span>`;
+        summary.style.background = "#1b4332";
+      } else {
+        summary.innerHTML = `<span class="fail">${failed} of ${total} tests failed.</span>`;
+        summary.style.background = "#4a1a1a";
+      }
+    }
+
+    runAsyncTests();
+  </script>
+</body>
+</html>

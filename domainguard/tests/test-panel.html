@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DomainGuard — Panel UI Tests</title>
+  <style>
+    body { font-family: monospace; font-size: 14px; padding: 16px; }
+    .pass { color: green; }
+    .fail { color: red; }
+    h2 { margin-top: 24px; }
+    #results { white-space: pre-wrap; }
+    hr { margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <h1>DomainGuard — Panel UI Tests</h1>
+  <p>Structural assertions that verify panel files exist and have the expected shape.</p>
+  <div id="results"></div>
+
+  <script>
+    const results = document.getElementById("results");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(label, condition) {
+      if (condition) {
+        results.innerHTML += `<span class="pass">PASS</span> ${label}\n`;
+        passed++;
+      } else {
+        results.innerHTML += `<span class="fail">FAIL</span> ${label}\n`;
+        failed++;
+      }
+    }
+
+    async function runTests() {
+      results.innerHTML = "Running structural tests...\n\n";
+
+      // Test 1: panel.html exists and loads
+      try {
+        const resp = await fetch("../panel/panel.html");
+        assert("panel.html exists and is fetchable", resp.ok);
+        const html = await resp.text();
+
+        // Test 2: panel.html loads domain.js
+        assert("panel.html loads utils/domain.js via script tag",
+          html.includes('src="../utils/domain.js"'));
+
+        // Test 3: panel.html loads panel.js
+        assert("panel.html loads panel.js via script tag",
+          html.includes('src="panel.js"'));
+
+        // Test 4: panel.html loads panel.css
+        assert("panel.html loads panel.css via link tag",
+          html.includes('href="panel.css"'));
+
+        // Test 5: panel.html has restricted message element
+        assert("panel.html has restricted-message element",
+          html.includes('id="restricted-message"'));
+
+        // Test 6: panel.html has domain name header
+        assert("panel.html has domain-name header element",
+          html.includes('id="domain-name"'));
+
+        // Test 7: panel.html has toggle checkbox
+        assert("panel.html has delete-on-leave toggle",
+          html.includes('id="toggle-delete-on-leave"'));
+
+        // Test 8: panel.html has three segments
+        assert("panel.html has cookies segment",
+          html.includes('id="segment-cookies"'));
+        assert("panel.html has local storage segment",
+          html.includes('id="segment-local-storage"'));
+        assert("panel.html has session storage segment",
+          html.includes('id="segment-session-storage"'));
+
+        // Test 9: panel.html has third-party section
+        assert("panel.html has third-party list",
+          html.includes('id="list-third-party"'));
+        assert("panel.html has third-party delete all button",
+          html.includes('id="btn-delete-all-third-party"'));
+
+        // Test 10: panel.html has badges
+        assert("panel.html has cookie badge", html.includes('id="badge-cookies"'));
+        assert("panel.html has local storage badge", html.includes('id="badge-local-storage"'));
+        assert("panel.html has session storage badge", html.includes('id="badge-session-storage"'));
+        assert("panel.html has third-party badge", html.includes('id="badge-third-party"'));
+
+      } catch (e) {
+        assert("panel.html exists and is fetchable", false);
+      }
+
+      // Test 11: panel.css exists
+      try {
+        const resp = await fetch("../panel/panel.css");
+        assert("panel.css exists and is fetchable", resp.ok);
+        const css = await resp.text();
+
+        assert("panel.css has segment styles", css.includes(".segment"));
+        assert("panel.css has badge styles", css.includes(".badge"));
+        assert("panel.css has toggle styles", css.includes(".toggle-slider"));
+        assert("panel.css has hidden class", css.includes(".hidden"));
+        assert("panel.css has disabled segment styles", css.includes(".segment.disabled"));
+        assert("panel.css has unavailable message styles", css.includes(".unavailable-message"));
+      } catch (e) {
+        assert("panel.css exists and is fetchable", false);
+      }
+
+      // Test 12: panel.js exists and has key patterns
+      try {
+        const resp = await fetch("../panel/panel.js");
+        assert("panel.js exists and is fetchable", resp.ok);
+        const js = await resp.text();
+
+        assert("panel.js uses strict mode", js.includes('"use strict"'));
+        assert("panel.js has requestCounter for stale response handling",
+          js.includes("requestCounter"));
+        assert("panel.js has currentTabId tracking", js.includes("currentTabId"));
+        assert("panel.js has currentDomain tracking", js.includes("currentDomain"));
+        assert("panel.js queries active tab on init",
+          js.includes("browser.tabs.query"));
+        assert("panel.js uses DomainUtils.isRestrictedUrl for pre-check",
+          js.includes("DomainUtils.isRestrictedUrl"));
+        assert("panel.js uses DomainUtils.getBaseDomain",
+          js.includes("DomainUtils.getBaseDomain"));
+        assert("panel.js fetches cookies via message router",
+          js.includes('"get-cookies"'));
+        assert("panel.js fetches storage via tabs.sendMessage",
+          js.includes("browser.tabs.sendMessage"));
+        assert("panel.js has 2-second Promise.race timeout",
+          js.includes("Promise.race") && js.includes("2000"));
+        assert("panel.js fetches third-party records",
+          js.includes('"get-third-party-records"'));
+        assert("panel.js fetches toggle state",
+          js.includes('"get-toggle-state"'));
+        assert("panel.js sets toggle state",
+          js.includes('"set-toggle-state"'));
+        assert("panel.js handles deletion broadcasts",
+          js.includes('"deletion-complete"'));
+        assert("panel.js listens for tab activation",
+          js.includes("browser.tabs.onActivated"));
+        assert("panel.js listens for tab updates",
+          js.includes("browser.tabs.onUpdated"));
+        assert("panel.js has lazy rendering for third-party",
+          js.includes("THIRD_PARTY_BATCH_SIZE"));
+        assert("panel.js uses [DomainGuard] console prefix",
+          js.includes("[DomainGuard]"));
+        assert("panel.js sends delete-cookie messages",
+          js.includes('"delete-cookie"'));
+        assert("panel.js sends delete-all-cookies messages",
+          js.includes('"delete-all-cookies"'));
+        assert("panel.js sends clear-storage messages",
+          js.includes('"clear-storage"'));
+        assert("panel.js sends clear-all-third-party messages",
+          js.includes('"clear-all-third-party"'));
+        assert("panel.js sends delete-storage-item messages",
+          js.includes('"delete-storage-item"'));
+        assert("panel.js has stale response check (currentTabId !== myTabId)",
+          js.includes("currentTabId !== myTabId"));
+      } catch (e) {
+        assert("panel.js exists and is fetchable", false);
+      }
+
+      // Summary
+      results.innerHTML += `\n${"=".repeat(40)}\n`;
+      results.innerHTML += `Total: ${passed + failed} | `;
+      results.innerHTML += `<span class="pass">Passed: ${passed}</span> | `;
+      results.innerHTML += `<span class="fail">Failed: ${failed}</span>\n`;
+
+      results.innerHTML += `\n${"=".repeat(40)}\n`;
+      results.innerHTML += `\nMANUAL TEST PROCEDURES (run in Firefox with extension loaded):\n\n`;
+      results.innerHTML += `--- Display Tests ---
+1. Open panel on a site with cookies — verify cookies appear with names and values
+2. Verify localStorage entries display correctly
+3. Verify sessionStorage entries display correctly
+4. Verify item count badges show correct numbers
+5. Verify domain header shows base domain (e.g., "walmart.com" not full URL)
+6. Verify third-party section shows deduplicated cookies with domain + name
+7. Verify originatingDomains array is displayed (e.g., "seen on: walmart.com, target.com")
+
+--- Interaction Tests ---
+8. Click individual "Delete" on a cookie — verify it disappears
+9. Click "Delete All" on Cookies segment — verify all cookies removed
+10. Click individual "Delete" on a localStorage item — verify removal
+11. Click "Delete All" on Local Storage — verify all items cleared
+12. Click individual "Delete" on a sessionStorage item — verify removal
+13. Click "Delete All" on Session Storage — verify all items cleared
+14. Click "Delete All" on third-party section — verify all removed
+15. Toggle delete-on-leave OFF — verify toggle visual state changes
+16. Toggle delete-on-leave ON — verify state persists after panel close/reopen
+
+--- Collapsible Segments ---
+17. Click segment header — verify collapse/expand
+18. Verify collapsed state hides items but keeps header visible
+
+--- Tab Switching ---
+19. Switch to a different tab — verify top section refreshes
+20. Switch to about:newtab — verify "No domain data available" appears instantly
+21. Switch back to a real site — verify data reappears
+22. Rapidly switch between 3+ tabs — verify no cross-tab data rendering
+
+--- Error States ---
+23. Navigate to about:newtab — verify restricted pre-check (instant, no 2s wait)
+24. Content script timeout — verify "Storage data unavailable" after 2 seconds
+25. When storage unavailable — verify delete buttons disabled
+26. Cookies still display even when storage unavailable
+
+--- Lazy Rendering ---
+27. With 50+ third-party items — verify scrollable list
+28. Scroll through the list — verify items render smoothly
+`;
+    }
+
+    runTests();
+  </script>
+</body>
+</html>

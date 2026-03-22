@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DomainGuard — Panel Sync Tests</title>
+  <style>
+    body { font-family: monospace; font-size: 14px; padding: 16px; }
+    .pass { color: green; }
+    .fail { color: red; }
+    h2 { margin-top: 24px; }
+    #results { white-space: pre-wrap; }
+    hr { margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <h1>DomainGuard — Panel Sync Tests</h1>
+  <p>Structural assertions verifying panel sync, debouncing, toggle broadcast, and cross-instance coordination.</p>
+  <div id="results"></div>
+
+  <script>
+    const results = document.getElementById("results");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(label, condition) {
+      if (condition) {
+        results.innerHTML += `<span class="pass">PASS</span> ${label}\n`;
+        passed++;
+      } else {
+        results.innerHTML += `<span class="fail">FAIL</span> ${label}\n`;
+        failed++;
+      }
+    }
+
+    async function runTests() {
+      results.innerHTML = "Running structural tests...\n\n";
+
+      // ========== PANEL.JS — DEBOUNCE ==========
+      results.innerHTML += "<h2>panel.js — Refresh Debouncing</h2>\n";
+
+      let panelJs = "";
+      try {
+        const resp = await fetch("../panel/panel.js");
+        assert("panel.js exists and is fetchable", resp.ok);
+        panelJs = await resp.text();
+
+        assert("panel.js declares refreshDebounceTimer variable",
+          panelJs.includes("refreshDebounceTimer"));
+
+        assert("panel.js declares REFRESH_DEBOUNCE_MS constant",
+          panelJs.includes("REFRESH_DEBOUNCE_MS"));
+
+        assert("panel.js REFRESH_DEBOUNCE_MS is 200",
+          panelJs.includes("REFRESH_DEBOUNCE_MS = 200"));
+
+        assert("panel.js defines debouncedRefresh function",
+          panelJs.includes("function debouncedRefresh"));
+
+        assert("panel.js debouncedRefresh uses clearTimeout",
+          panelJs.includes("clearTimeout(refreshDebounceTimer)"));
+
+        assert("panel.js debouncedRefresh uses setTimeout with REFRESH_DEBOUNCE_MS",
+          panelJs.includes("setTimeout(") && panelJs.includes("REFRESH_DEBOUNCE_MS"));
+
+        assert("panel.js debouncedRefresh calls refreshData inside setTimeout",
+          /setTimeout\(\s*\(\)\s*=>\s*\{[^}]*refreshData\(\)/.test(panelJs));
+
+      } catch (e) {
+        assert("panel.js exists and is fetchable", false);
+      }
+
+      // ========== PANEL.JS — DELETE HANDLERS USE DEBOUNCED REFRESH ==========
+      results.innerHTML += "<h2>panel.js — Delete Handlers Use Debounced Refresh</h2>\n";
+
+      // Check that delete handlers call debouncedRefresh, not refreshData directly
+      // Count occurrences of debouncedRefresh() calls (should be in all delete handlers)
+      const debouncedCalls = (panelJs.match(/debouncedRefresh\(\)/g) || []).length;
+      assert("panel.js has multiple debouncedRefresh() calls (delete handlers)",
+        debouncedCalls >= 5);
+
+      // refreshData() should still exist as a function but NOT be called directly
+      // from delete handlers — only from debouncedRefresh's setTimeout and loadTab
+      assert("panel.js still defines refreshData function",
+        panelJs.includes("async function refreshData"));
+
+      // Delete handlers should NOT call await refreshData() directly
+      assert("panel.js cookie delete handler uses debouncedRefresh (not await refreshData)",
+        panelJs.includes('type: "delete-cookie", cookie: cookie') &&
+        !panelJs.includes('sendMessage({ type: "delete-cookie", cookie: cookie });\n        await refreshData()'));
+
+      // ========== PANEL.JS — BROADCAST LISTENER ==========
+      results.innerHTML += "<h2>panel.js — Broadcast Listener</h2>\n";
+
+      assert("panel.js onMessage listener checks message.type",
+        panelJs.includes('message.type'));
+
+      assert("panel.js listens for deletion-complete messages",
+        panelJs.includes('"deletion-complete"'));
+
+      assert("panel.js deletion-complete triggers debouncedRefresh",
+        panelJs.includes('"deletion-complete"') && panelJs.includes("debouncedRefresh()"));
+
+      // ========== PANEL.JS — TOGGLE SYNC ==========
+      results.innerHTML += "<h2>panel.js — Toggle State Sync</h2>\n";
+
+      assert("panel.js listens for toggle-changed messages",
+        panelJs.includes('"toggle-changed"'));
+
+      assert("panel.js toggle-changed checks message.domain against currentDomain",
+        panelJs.includes("message.domain === currentDomain") ||
+        panelJs.includes("message.domain == currentDomain"));
+
+      assert("panel.js toggle-changed updates toggleCheckbox.checked",
+        panelJs.includes("toggleCheckbox.checked = message.enabled"));
+
+      // ========== PANEL.JS — STALE RESPONSE HANDLING PRESERVED ==========
+      results.innerHTML += "<h2>panel.js — Stale Response Handling Preserved</h2>\n";
+
+      assert("panel.js still has requestCounter for stale response handling",
+        panelJs.includes("requestCounter"));
+
+      assert("panel.js still has currentTabId for stale response handling",
+        panelJs.includes("currentTabId"));
+
+      assert("panel.js fetchStorage still checks currentTabId !== myTabId",
+        panelJs.includes("currentTabId !== myTabId"));
+
+      // ========== DELETION.JS — TOGGLE BROADCAST ==========
+      results.innerHTML += "<h2>deletion.js — Toggle Change Broadcast</h2>\n";
+
+      let deletionJs = "";
+      try {
+        const resp = await fetch("../background/deletion.js");
+        assert("deletion.js exists and is fetchable", resp.ok);
+        deletionJs = await resp.text();
+
+        assert("deletion.js defines broadcastToggleChange function",
+          deletionJs.includes("broadcastToggleChange"));
+
+        assert("deletion.js broadcastToggleChange sends type toggle-changed",
+          deletionJs.includes('"toggle-changed"'));
+
+        assert("deletion.js setToggleState calls broadcastToggleChange",
+          deletionJs.includes("await broadcastToggleChange(baseDomain, enabled)"));
+
+        assert("deletion.js broadcastToggleChange wrapped in try/catch",
+          deletionJs.includes("broadcastToggleChange") &&
+          /async function broadcastToggleChange[\s\S]*?try\s*\{[\s\S]*?\}\s*catch/m.test(deletionJs));
+
+        // Still has broadcastDeletion
+        assert("deletion.js still has broadcastDeletion function",
+          deletionJs.includes("async function broadcastDeletion"));
+
+        assert("deletion.js broadcastDeletion still sends deletion-complete type",
+          deletionJs.includes('"deletion-complete"'));
+
+      } catch (e) {
+        assert("deletion.js exists and is fetchable", false);
+      }
+
+      // ========== MAIN.JS — CLEAR-ALL-THIRD-PARTY BROADCAST ==========
+      results.innerHTML += "<h2>main.js — Clear All Third-Party Broadcast</h2>\n";
+
+      let mainJs = "";
+      try {
+        const resp = await fetch("../background/main.js");
+        assert("main.js exists and is fetchable", resp.ok);
+        mainJs = await resp.text();
+
+        assert("main.js clear-all-third-party handler still calls clearAllRecords",
+          mainJs.includes("clearAllRecords"));
+
+        assert("main.js clear-all-third-party handler broadcasts deletion-complete",
+          mainJs.includes("clear-all-third-party") &&
+          mainJs.includes('"clear-all-third-party"'));
+
+        // The broadcast should include action detail
+        assert("main.js clear-all-third-party broadcast includes action detail",
+          mainJs.includes('action: "clear-all-third-party"'));
+
+        assert("main.js clear-all-third-party broadcast wrapped in try/catch",
+          mainJs.includes('action: "clear-all-third-party"'));
+
+      } catch (e) {
+        assert("main.js exists and is fetchable", false);
+      }
+
+      // ========== SIDEBAR.HTML — IFRAME STRUCTURE ==========
+      results.innerHTML += "<h2>sidebar.html — Iframe Structure (Broadcast Delivery)</h2>\n";
+
+      try {
+        const resp = await fetch("../sidebar/sidebar.html");
+        assert("sidebar.html exists and is fetchable", resp.ok);
+        const html = await resp.text();
+
+        assert("sidebar.html has iframe loading panel.html",
+          html.includes('<iframe') && html.includes('panel.html'));
+
+        assert("sidebar.html iframe has full-bleed styling (width:100%)",
+          html.includes("width:100%"));
+
+        assert("sidebar.html iframe has full-bleed styling (height:100%)",
+          html.includes("height:100%"));
+
+        assert("sidebar.html iframe has no border",
+          html.includes("border:none"));
+
+        // Zero JS — no script tags
+        assert("sidebar.html has zero JavaScript (no script tags)",
+          !html.includes("<script"));
+
+      } catch (e) {
+        assert("sidebar.html exists and is fetchable", false);
+      }
+
+      // ========== SUMMARY ==========
+      results.innerHTML += "\n<hr>\n";
+      results.innerHTML += `<strong>Total: ${passed + failed} | `;
+      results.innerHTML += `<span class="pass">Passed: ${passed}</span> | `;
+      results.innerHTML += `<span class="fail">Failed: ${failed}</span></strong>\n`;
+
+      // ========== MANUAL TEST PROCEDURES ==========
+      results.innerHTML += "\n<hr>\n";
+      results.innerHTML += "<h2>Manual Test Procedures</h2>\n";
+      results.innerHTML += "Run these in Firefox via about:debugging after loading the extension.\n\n";
+
+      results.innerHTML += "<h3>Setup</h3>\n";
+      results.innerHTML += "1. Load the extension in Firefox via about:debugging\n";
+      results.innerHTML += "2. Navigate to a site with cookies (e.g., walmart.com)\n";
+      results.innerHTML += "3. Open the sidebar via the popup OR browser menu\n";
+      results.innerHTML += "4. Open the detached window via the popup\n";
+      results.innerHTML += "5. Position both views so you can see them simultaneously\n\n";
+
+      results.innerHTML += "<h3>Cross-Instance Deletion Sync</h3>\n";
+      results.innerHTML += "6. In the SIDEBAR: delete a single cookie -> verify it disappears from the DETACHED WINDOW within 1 second\n";
+      results.innerHTML += "7. In the DETACHED WINDOW: delete a single cookie -> verify it disappears from the SIDEBAR\n";
+      results.innerHTML += '8. In the SIDEBAR: click "Delete All" on Cookies segment -> verify DETACHED WINDOW shows empty cookies\n';
+      results.innerHTML += "9. In the DETACHED WINDOW: delete a localStorage item -> verify it disappears from SIDEBAR\n";
+      results.innerHTML += '10. In the SIDEBAR: click "Delete All" on Local Storage -> verify DETACHED WINDOW reflects the change\n';
+      results.innerHTML += "11. In the DETACHED WINDOW: delete a third-party cookie -> verify it disappears from SIDEBAR\n";
+      results.innerHTML += '12. In the SIDEBAR: click "Delete All" on third-party section -> verify DETACHED WINDOW clears\n\n';
+
+      results.innerHTML += "<h3>Toggle State Sync</h3>\n";
+      results.innerHTML += "13. In the SIDEBAR: toggle delete-on-leave OFF -> verify DETACHED WINDOW toggle reflects OFF immediately\n";
+      results.innerHTML += "14. In the DETACHED WINDOW: toggle delete-on-leave ON -> verify SIDEBAR toggle reflects ON immediately\n";
+      results.innerHTML += "15. Verify toggle changes don't trigger a full data refresh (only checkbox UI update)\n\n";
+
+      results.innerHTML += "<h3>Auto Delete-on-Leave Sync</h3>\n";
+      results.innerHTML += "16. Open sidebar and detached window, ensure toggle is ON for a domain\n";
+      results.innerHTML += "17. Open a tab for that domain, then close it (keep another tab active)\n";
+      results.innerHTML += "18. After ~500ms delay, verify BOTH panel instances show the domain's data is cleared\n\n";
+
+      results.innerHTML += "<h3>Debounce Verification</h3>\n";
+      results.innerHTML += "19. Open browser console for both panel instances (use about:debugging -> Inspect for sidebar iframe)\n";
+      results.innerHTML += "20. In one panel, rapidly delete 5 cookies one after another\n";
+      results.innerHTML += "21. In the console, verify that refreshData() calls are coalesced — should see 1-2 refreshes, not 10+\n";
+      results.innerHTML += "22. Verify the final state is correct — all 5 cookies are gone from both panels\n\n";
+
+      results.innerHTML += "<h3>Single Panel Edge Cases</h3>\n";
+      results.innerHTML += "23. Close the detached window, keep sidebar open — delete an item in sidebar -> no errors in console\n";
+      results.innerHTML += "24. Close the sidebar, keep detached window open — delete an item -> no errors in console\n";
+      results.innerHTML += "25. Open only one panel — delete-on-leave fires -> panel refreshes correctly, no broadcast errors\n\n";
+
+      results.innerHTML += "<h3>Broadcast Delivery Verification</h3>\n";
+      results.innerHTML += "26. Open browser console for the sidebar iframe (about:debugging -> sidebar -> iframe)\n";
+      results.innerHTML += "27. Open browser console for the detached window\n";
+      results.innerHTML += "28. Delete an item in one panel -> verify BOTH consoles show the deletion-complete message received\n";
+      results.innerHTML += "29. If sidebar iframe does NOT receive the broadcast: sidebar.html needs a relay script added\n\n";
+
+      results.innerHTML += "<h3>Popup Workflow Integration</h3>\n";
+      results.innerHTML += '30. Click toolbar icon -> click "Open Sidebar" -> sidebar opens -> delete an item -> no errors\n';
+      results.innerHTML += '31. Click toolbar icon -> click "Open Detached Window" -> window opens -> delete an item -> no errors\n';
+      results.innerHTML += "32. Open both via popup -> delete in one -> other syncs correctly\n\n";
+
+      results.innerHTML += "<h3>Rapid Tab Switching</h3>\n";
+      results.innerHTML += "33. With both panels open, rapidly switch between tabs for different domains\n";
+      results.innerHTML += "34. Verify both panels update to show the correct domain's data (stale response handling)\n";
+      results.innerHTML += "35. Delete an item during a tab switch -> verify no stale data renders\n";
+    }
+
+    runTests();
+  </script>
+</body>
+</html>

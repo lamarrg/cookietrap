@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Deletion Engine Tests</title>
+  <style>
+    body { font-family: monospace; margin: 2em; background: #1a1a2e; color: #e0e0e0; }
+    h1 { color: #00d4ff; }
+    h2 { color: #aaa; margin-top: 2em; }
+    .pass { color: #4caf50; }
+    .fail { color: #f44336; font-weight: bold; }
+    .section { margin: 1em 0; padding: 1em; background: #16213e; border-radius: 4px; }
+    pre { background: #0f3460; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    #summary { font-size: 1.2em; margin-top: 2em; padding: 1em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Deletion Engine Tests</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+  <h2>Manual Test Procedures</h2>
+  <div class="section">
+    <p>These tests must be run in Firefox via about:debugging with the extension loaded:</p>
+    <pre>
+=== Content Script (storage-reader.js) ===
+
+1. Read storage
+   → Navigate to any site (e.g., walmart.com)
+   → In the site's DevTools console: localStorage.setItem("test-key", "test-value")
+   → In background console: get the active tab ID
+     let tabs = await browser.tabs.query({active: true, currentWindow: true});
+     let tabId = tabs[0].id;
+   → Send read message:
+     await browser.tabs.sendMessage(tabId, {type: "read-storage"})
+   → Should return {localStorage: [{key: "test-key", value: "test-value"}, ...], sessionStorage: [...]}
+
+2. Delete storage item
+   → browser.tabs.sendMessage(tabId, {type: "delete-storage-item", storageType: "local", key: "test-key"})
+   → Should return {success: true}
+   → Verify in DevTools > Storage: item is gone
+
+3. Clear all storage
+   → Add some localStorage and sessionStorage items on the page
+   → browser.tabs.sendMessage(tabId, {type: "clear-storage", storageType: "all"})
+   → Should return {success: true}
+   → Verify in DevTools > Storage: both are empty
+
+4. Content script is inert on injection
+   → Navigate to a new site, check console — no output from storage-reader.js
+   → No DOM changes, no network requests
+
+=== Deletion Engine (deletion.js) ===
+
+5. Manual cookie deletion
+   → Find a cookie: let cookies = await browser.cookies.getAll({domain: "walmart.com"})
+   → Delete it: await Deletion.deleteCookie(cookies[0])
+   → Verify gone: await browser.cookies.getAll({domain: "walmart.com"})
+   → Watch for "[DomainGuard] Deleted cookie:" log message
+
+6. Secure vs non-secure cookie URLs
+   → Find a secure cookie (secure: true)
+   → Delete it — URL in logs should use https://
+   → Find a non-secure cookie (secure: false)
+   → Delete it — URL in logs should use http://
+
+7. Leading dot domain handling
+   → Find a cookie with domain ".walmart.com"
+   → Delete it — URL should use "walmart.com" (dot stripped)
+
+=== Auto Delete-on-Leave ===
+
+8. Toggle ON, close all tabs for a domain
+   → Open walmart.com in a tab, wait for cookies to appear
+   → Verify toggle: Deletion.getToggleState("walmart.com") → should be true (default)
+   → Close all walmart.com tabs
+   → Wait ~1 second (500ms TabTracker delay + deletion)
+   → Check: await browser.cookies.getAll({domain: "walmart.com"}) → should be empty
+   → Watch for "[DomainGuard] Auto-deleting data for walmart.com" log
+
+9. Toggle OFF, close all tabs
+   → Open a site, wait for cookies
+   → await Deletion.setToggleState("example.com", false)
+   → Close all tabs for that domain
+   → Wait ~1 second
+   → Cookies should still exist (NOT deleted)
+
+10. Toggle persistence
+    → await Deletion.setToggleState("example.com", false)
+    → Restart extension via about:debugging
+    → Deletion.getToggleState("example.com") → should be false
+
+11. Third-party data NOT affected by auto-delete
+    → Browse sites to accumulate third-party records
+    → Close all tabs for a first-party domain
+    → RequestLogger.getThirdPartyRecords() → should still have data
+
+=== Broadcast Tests ===
+
+12. Deletion broadcast
+    → Open the sidebar or panel
+    → Delete a cookie via background console: Deletion.deleteCookie(...)
+    → Panel should receive deletion-complete message (check panel console)
+
+13. Broadcast with no listeners
+    → Close all panels/sidebar
+    → Delete a cookie via background console
+    → Should NOT throw an error (try/catch wraps the broadcast)
+
+=== Message Router Tests ===
+
+14. Get cookies via message
+    → From panel console: browser.runtime.sendMessage({type: "get-cookies", domain: "walmart.com"})
+    → Should return array of cookies
+
+15. Toggle via message
+    → browser.runtime.sendMessage({type: "get-toggle-state", domain: "test.com"})
+    → Should return true (default)
+    → browser.runtime.sendMessage({type: "set-toggle-state", domain: "test.com", enabled: false})
+    → browser.runtime.sendMessage({type: "get-toggle-state", domain: "test.com"})
+    → Should return false
+
+16. Third-party records via message
+    → browser.runtime.sendMessage({type: "get-third-party-records"})
+    → Should return array of record objects
+
+17. Clear all third-party via message
+    → Browse sites to accumulate records
+    → browser.runtime.sendMessage({type: "clear-all-third-party"})
+    → browser.runtime.sendMessage({type: "get-third-party-records"})
+    → Should return empty array
+    </pre>
+  </div>
+
+  <!-- Load DomainUtils dependency -->
+  <script src="../utils/domain.js"></script>
+
+  <script>
+    // Provide mock browser API so modules can load outside Firefox
+    if (typeof browser === "undefined") {
+      window.browser = {
+        tabs: {
+          query: () => Promise.resolve([]),
+          sendMessage: () => Promise.resolve({ success: true }),
+          onCreated: { addListener: () => {} },
+          onUpdated: { addListener: () => {} },
+          onRemoved: { addListener: () => {} },
+        },
+        webRequest: {
+          onCompleted: { addListener: () => {} },
+        },
+        cookies: {
+          getAll: () => Promise.resolve([]),
+          remove: () => Promise.resolve(),
+        },
+        browsingData: {
+          remove: () => Promise.resolve(),
+        },
+        storage: {
+          local: {
+            get: () => Promise.resolve({}),
+            set: () => Promise.resolve(),
+            remove: () => Promise.resolve(),
+          },
+        },
+        runtime: {
+          sendMessage: () => Promise.resolve(),
+          onMessage: { addListener: () => {} },
+        },
+      };
+    }
+  </script>
+
+  <!-- Load dependencies in order -->
+  <script src="../background/tab-tracker.js"></script>
+  <script src="../background/request-logger.js"></script>
+  <script src="../background/deletion.js"></script>
+
+  <script>
+    const results = document.getElementById("results");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(condition, description) {
+      if (condition) {
+        passed++;
+        results.innerHTML += `<div class="pass">&#10003; ${description}</div>`;
+      } else {
+        failed++;
+        results.innerHTML += `<div class="fail">&#10007; ${description}</div>`;
+      }
+    }
+
+    // --- Structural tests ---
+    assert(typeof Deletion === "object", "Deletion global exists");
+    assert(typeof Deletion.init === "function", "init is a function");
+    assert(typeof Deletion.deleteCookie === "function", "deleteCookie is a function");
+    assert(typeof Deletion.deleteStorageItem === "function", "deleteStorageItem is a function");
+    assert(typeof Deletion.clearStorage === "function", "clearStorage is a function");
+    assert(typeof Deletion.autoDeleteForDomain === "function", "autoDeleteForDomain is a function");
+    assert(typeof Deletion.getToggleState === "function", "getToggleState is a function");
+    assert(typeof Deletion.setToggleState === "function", "setToggleState is a function");
+
+    // --- Behavioral tests ---
+
+    async function runAsyncTests() {
+      // Init all dependencies
+      await TabTracker.init();
+      await RequestLogger.init();
+      await Deletion.init();
+      assert(true, "init() completes without error");
+
+      // Default toggle state is true (ON)
+      const defaultState = Deletion.getToggleState("never-seen-domain.com");
+      assert(defaultState === true, "Default toggle state is true (ON) for unknown domain");
+
+      // Set toggle to false
+      await Deletion.setToggleState("test-domain.com", false);
+      assert(Deletion.getToggleState("test-domain.com") === false, "Toggle set to false persists in memory");
+
+      // Set toggle back to true
+      await Deletion.setToggleState("test-domain.com", true);
+      assert(Deletion.getToggleState("test-domain.com") === true, "Toggle set to true persists in memory");
+
+      // deleteCookie with mock — should complete without error
+      await Deletion.deleteCookie({
+        domain: ".example.com",
+        name: "test",
+        path: "/",
+        secure: true,
+        storeId: "firefox-default",
+      });
+      assert(true, "deleteCookie completes without error (mock)");
+
+      // deleteStorageItem with mock — should complete without error
+      await Deletion.deleteStorageItem(1, "local", "test-key");
+      assert(true, "deleteStorageItem completes without error (mock)");
+
+      // clearStorage with mock — should complete without error
+      await Deletion.clearStorage(1, "all");
+      assert(true, "clearStorage completes without error (mock)");
+
+      // autoDeleteForDomain with mock — should complete without error
+      await Deletion.autoDeleteForDomain("example.com");
+      assert(true, "autoDeleteForDomain completes without error (mock)");
+
+      // --- Summary ---
+      const summary = document.getElementById("summary");
+      const total = passed + failed;
+      if (failed === 0) {
+        summary.innerHTML = `<span class="pass">All ${total} tests passed.</span>`;
+        summary.style.background = "#1b4332";
+      } else {
+        summary.innerHTML = `<span class="fail">${failed} of ${total} tests failed.</span>`;
+        summary.style.background = "#4a1a1a";
+      }
+    }
+
+    runAsyncTests();
+  </script>
+</body>
+</html>

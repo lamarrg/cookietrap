@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DomainGuard — domain.js Tests</title>
+  <style>
+    body { font-family: monospace; margin: 20px; background: #1a1a2e; color: #e0e0e0; }
+    .pass { color: #4caf50; }
+    .fail { color: #f44336; font-weight: bold; }
+    h1 { color: #7c83ff; }
+    .summary { margin-top: 20px; padding: 10px; border-top: 1px solid #444; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>domain.js Unit Tests</h1>
+  <div id="results"></div>
+  <div id="summary" class="summary"></div>
+
+  <script src="../utils/domain.js"></script>
+  <script>
+    const results = document.getElementById("results");
+    const summary = document.getElementById("summary");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(description, actual, expected) {
+      const ok = actual === expected;
+      if (ok) {
+        passed++;
+        results.innerHTML += `<div class="pass">PASS: ${description}</div>`;
+      } else {
+        failed++;
+        results.innerHTML += `<div class="fail">FAIL: ${description} — expected "${expected}", got "${actual}"</div>`;
+      }
+    }
+
+    // getBaseDomain tests
+    assert(
+      'getBaseDomain("https://shop.walmart.com/cart") = "walmart.com"',
+      DomainUtils.getBaseDomain("https://shop.walmart.com/cart"), "walmart.com"
+    );
+    assert(
+      'getBaseDomain("https://www.walmart.com") = "walmart.com"',
+      DomainUtils.getBaseDomain("https://www.walmart.com"), "walmart.com"
+    );
+    assert(
+      'getBaseDomain("https://images.walmart.com") = "walmart.com"',
+      DomainUtils.getBaseDomain("https://images.walmart.com"), "walmart.com"
+    );
+    assert(
+      'getBaseDomain("https://walmart.com") = "walmart.com"',
+      DomainUtils.getBaseDomain("https://walmart.com"), "walmart.com"
+    );
+    assert(
+      'getBaseDomain("https://example.co.uk/page") = "example.co.uk"',
+      DomainUtils.getBaseDomain("https://example.co.uk/page"), "example.co.uk"
+    );
+    assert(
+      'getBaseDomain("https://sub.example.co.uk") = "example.co.uk"',
+      DomainUtils.getBaseDomain("https://sub.example.co.uk"), "example.co.uk"
+    );
+    assert(
+      'getBaseDomain("https://deep.sub.example.co.uk") = "example.co.uk"',
+      DomainUtils.getBaseDomain("https://deep.sub.example.co.uk"), "example.co.uk"
+    );
+    assert(
+      'getBaseDomain("https://example.com.au") = "example.com.au"',
+      DomainUtils.getBaseDomain("https://example.com.au"), "example.com.au"
+    );
+    assert(
+      'getBaseDomain("https://www.example.com.br/page") = "example.com.br"',
+      DomainUtils.getBaseDomain("https://www.example.com.br/page"), "example.com.br"
+    );
+    assert(
+      'getBaseDomain("http://localhost") = "localhost"',
+      DomainUtils.getBaseDomain("http://localhost"), "localhost"
+    );
+    assert(
+      'getBaseDomain("https://192.168.1.1/admin") = "192.168.1.1"',
+      DomainUtils.getBaseDomain("https://192.168.1.1/admin"), "192.168.1.1"
+    );
+
+    // Restricted URL detection returns null
+    assert(
+      'getBaseDomain("about:newtab") = null',
+      DomainUtils.getBaseDomain("about:newtab"), null
+    );
+    assert(
+      'getBaseDomain("moz-extension://abc/page.html") = null',
+      DomainUtils.getBaseDomain("moz-extension://abc/page.html"), null
+    );
+
+    // isRestrictedUrl tests
+    assert(
+      'isRestrictedUrl("about:newtab") = true',
+      DomainUtils.isRestrictedUrl("about:newtab"), true
+    );
+    assert(
+      'isRestrictedUrl("about:blank") = true',
+      DomainUtils.isRestrictedUrl("about:blank"), true
+    );
+    assert(
+      'isRestrictedUrl("moz-extension://abc-123/page.html") = true',
+      DomainUtils.isRestrictedUrl("moz-extension://abc-123/page.html"), true
+    );
+    assert(
+      'isRestrictedUrl("file:///tmp/test.html") = true',
+      DomainUtils.isRestrictedUrl("file:///tmp/test.html"), true
+    );
+    assert(
+      'isRestrictedUrl("chrome://settings") = true',
+      DomainUtils.isRestrictedUrl("chrome://settings"), true
+    );
+    assert(
+      'isRestrictedUrl("https://walmart.com") = false',
+      DomainUtils.isRestrictedUrl("https://walmart.com"), false
+    );
+    assert(
+      'isRestrictedUrl("http://example.com") = false',
+      DomainUtils.isRestrictedUrl("http://example.com"), false
+    );
+    assert(
+      'isRestrictedUrl("") = true',
+      DomainUtils.isRestrictedUrl(""), true
+    );
+    assert(
+      'isRestrictedUrl(null) = true',
+      DomainUtils.isRestrictedUrl(null), true
+    );
+
+    // stripLeadingDot tests
+    assert(
+      'stripLeadingDot(".walmart.com") = "walmart.com"',
+      DomainUtils.stripLeadingDot(".walmart.com"), "walmart.com"
+    );
+    assert(
+      'stripLeadingDot("walmart.com") = "walmart.com"',
+      DomainUtils.stripLeadingDot("walmart.com"), "walmart.com"
+    );
+    assert(
+      'stripLeadingDot(".example.co.uk") = "example.co.uk"',
+      DomainUtils.stripLeadingDot(".example.co.uk"), "example.co.uk"
+    );
+
+    // Summary
+    const total = passed + failed;
+    summary.innerHTML = `<span class="${failed === 0 ? 'pass' : 'fail'}">${passed}/${total} tests passed</span>`;
+    if (failed > 0) {
+      summary.innerHTML += ` — <span class="fail">${failed} FAILED</span>`;
+    }
+  </script>
+</body>
+</html>

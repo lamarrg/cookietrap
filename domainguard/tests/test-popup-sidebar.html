@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DomainGuard — Popup &amp; Sidebar Tests</title>
+  <style>
+    body { font-family: monospace; font-size: 14px; padding: 16px; }
+    .pass { color: green; }
+    .fail { color: red; }
+    h2 { margin-top: 24px; }
+    #results { white-space: pre-wrap; }
+    hr { margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <h1>DomainGuard — Popup &amp; Sidebar Tests</h1>
+  <p>Structural assertions that verify popup and sidebar files exist and have the expected shape.</p>
+  <div id="results"></div>
+
+  <script>
+    const results = document.getElementById("results");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(label, condition) {
+      if (condition) {
+        results.innerHTML += `<span class="pass">PASS</span> ${label}\n`;
+        passed++;
+      } else {
+        results.innerHTML += `<span class="fail">FAIL</span> ${label}\n`;
+        failed++;
+      }
+    }
+
+    async function runTests() {
+      results.innerHTML = "Running structural tests...\n\n";
+
+      // ========== POPUP.HTML ==========
+      results.innerHTML += "<h2>popup.html Structure</h2>\n";
+
+      try {
+        const resp = await fetch("../popup/popup.html");
+        assert("popup.html exists and is fetchable", resp.ok);
+        const html = await resp.text();
+
+        // Script tag
+        assert("popup.html loads popup.js via script tag",
+          html.includes('src="popup.js"'));
+
+        // Does NOT load domain.js (not needed)
+        assert("popup.html does NOT load domain.js (not needed)",
+          !html.includes('domain.js'));
+
+        // Has sidebar button
+        assert("popup.html has sidebar button with id btn-sidebar",
+          html.includes('id="btn-sidebar"'));
+
+        // Has detached window button
+        assert("popup.html has detached window button with id btn-window",
+          html.includes('id="btn-window"'));
+
+        // Both are <button> elements
+        assert("popup.html sidebar button is a <button> element",
+          html.includes('<button') && html.includes('btn-sidebar'));
+
+        assert("popup.html window button is a <button> element",
+          html.includes('<button') && html.includes('btn-window'));
+
+        // Has a title or heading
+        assert("popup.html has DomainGuard heading",
+          html.includes('DomainGuard'));
+
+        // Has inline styles or linked stylesheet
+        assert("popup.html has styling (inline <style> block)",
+          html.includes('<style>'));
+
+        // Fixed width for popup
+        assert("popup.html body has fixed width for popup sizing",
+          html.includes('width:') || html.includes('width :'));
+
+      } catch (e) {
+        assert("popup.html exists and is fetchable", false);
+      }
+
+      // ========== POPUP.JS ==========
+      results.innerHTML += "\n<h2>popup.js Structure</h2>\n";
+
+      try {
+        const resp = await fetch("../popup/popup.js");
+        assert("popup.js exists and is fetchable", resp.ok);
+        const code = await resp.text();
+
+        // use strict
+        assert("popup.js uses strict mode",
+          code.includes('"use strict"') || code.includes("'use strict'"));
+
+        // NOT wrapped in IIFE (simple script, no shared scope concerns)
+        // Actually it can be either way — just check functionality
+
+        // References btn-sidebar
+        assert("popup.js references btn-sidebar element",
+          code.includes('btn-sidebar'));
+
+        // References btn-window
+        assert("popup.js references btn-window element",
+          code.includes('btn-window'));
+
+        // Uses browser.sidebarAction.open()
+        assert("popup.js calls browser.sidebarAction.open()",
+          code.includes('browser.sidebarAction.open'));
+
+        // Uses browser.windows.create()
+        assert("popup.js calls browser.windows.create()",
+          code.includes('browser.windows.create'));
+
+        // Uses browser.runtime.getURL for detached window
+        assert("popup.js uses browser.runtime.getURL() for panel URL",
+          code.includes('browser.runtime.getURL'));
+
+        // References panel/panel.html path
+        assert("popup.js references panel/panel.html path",
+          code.includes('panel/panel.html'));
+
+        // Calls window.close() to dismiss popup
+        assert("popup.js calls window.close() to dismiss popup",
+          code.includes('window.close()'));
+
+        // Window type is "popup"
+        assert("popup.js creates window with type: popup",
+          code.includes('type:') && code.includes('popup'));
+
+        // Window dimensions specified
+        assert("popup.js specifies window width (~400)",
+          code.includes('width:'));
+
+        assert("popup.js specifies window height (~600)",
+          code.includes('height:'));
+
+        // Uses [DomainGuard] console prefix
+        assert("popup.js uses [DomainGuard] console prefix",
+          code.includes('[DomainGuard]'));
+
+        // Uses addEventListener (not onclick)
+        assert("popup.js uses addEventListener for click handlers",
+          code.includes('addEventListener'));
+
+      } catch (e) {
+        assert("popup.js exists and is fetchable", false);
+      }
+
+      // ========== SIDEBAR.HTML ==========
+      results.innerHTML += "\n<h2>sidebar.html Structure</h2>\n";
+
+      try {
+        const resp = await fetch("../sidebar/sidebar.html");
+        assert("sidebar.html exists and is fetchable", resp.ok);
+        const html = await resp.text();
+
+        // Contains an iframe
+        assert("sidebar.html contains an <iframe> element",
+          html.includes('<iframe'));
+
+        // iframe src points to panel.html
+        assert("sidebar.html iframe src points to ../panel/panel.html",
+          html.includes('src="../panel/panel.html"'));
+
+        // iframe has no border
+        assert("sidebar.html iframe has border:none",
+          html.includes('border:none') || html.includes('border: none'));
+
+        // iframe is full width
+        assert("sidebar.html iframe has width:100%",
+          html.includes('width:100%') || html.includes('width: 100%'));
+
+        // iframe is full height
+        assert("sidebar.html iframe has height:100%",
+          html.includes('height:100%') || html.includes('height: 100%'));
+
+        // Body has no margin/padding (so iframe fills the space)
+        assert("sidebar.html body has margin:0 and padding:0 for full iframe",
+          html.includes('margin: 0') || html.includes('margin:0'));
+
+        // Does NOT load popup.js or domain.js (iframe handles everything)
+        assert("sidebar.html does NOT load popup.js",
+          !html.includes('popup.js'));
+
+        assert("sidebar.html does NOT load domain.js directly (iframe loads it)",
+          !html.includes('domain.js'));
+
+        assert("sidebar.html does NOT load panel.js directly (iframe loads it)",
+          !html.includes('panel.js'));
+
+      } catch (e) {
+        assert("sidebar.html exists and is fetchable", false);
+      }
+
+      // ========== MANIFEST.JSON ==========
+      results.innerHTML += "\n<h2>manifest.json Configuration</h2>\n";
+
+      try {
+        const resp = await fetch("../manifest.json");
+        assert("manifest.json exists and is fetchable", resp.ok);
+        const manifest = JSON.parse(await resp.text());
+
+        // sidebar_action configured
+        assert("manifest.json has sidebar_action configured",
+          manifest.sidebar_action !== undefined);
+
+        assert("manifest.json sidebar_action points to sidebar/sidebar.html",
+          manifest.sidebar_action && manifest.sidebar_action.default_panel === "sidebar/sidebar.html");
+
+        // browser_action configured
+        assert("manifest.json has browser_action configured",
+          manifest.browser_action !== undefined);
+
+        assert("manifest.json browser_action points to popup/popup.html",
+          manifest.browser_action && manifest.browser_action.default_popup === "popup/popup.html");
+
+      } catch (e) {
+        assert("manifest.json exists and is fetchable", false);
+      }
+
+      // ========== SUMMARY ==========
+      results.innerHTML += `\n<hr>\n<strong>Total: ${passed + failed} tests — `;
+      results.innerHTML += `<span class="pass">${passed} passed</span>, `;
+      results.innerHTML += `<span class="fail">${failed} failed</span></strong>\n`;
+
+      // ========== MANUAL TEST PROCEDURES ==========
+      results.innerHTML += `\n<hr>\n<h2>Manual Test Procedures (in Firefox via about:debugging)</h2>\n`;
+      results.innerHTML += `
+<strong>Popup Tests:</strong>
+1. Click the DomainGuard icon in the toolbar — verify popup appears with "DomainGuard" heading and two buttons
+2. Verify popup is compact and cleanly styled (~220px wide)
+3. Click "Open Sidebar" — verify sidebar opens with full panel UI showing current domain data
+4. Verify popup dismisses immediately after clicking "Open Sidebar"
+5. Click the icon again, click "Open Detached Window" — verify a new window opens with panel UI
+6. Verify popup dismisses immediately after clicking "Open Detached Window"
+7. Verify detached window opens at approximately 400x600 pixels
+8. Verify detached window URL is moz-extension://[uuid]/panel/panel.html (check address bar)
+
+<strong>Sidebar Tests:</strong>
+9. Open sidebar — verify panel.html loads inside the iframe
+10. Verify domain name header shows the current tab's base domain
+11. Verify all three segments (Cookies, Local Storage, Session Storage) are expanded
+12. Verify cookie data displays correctly with item names, values, and Delete buttons
+13. Verify localStorage/sessionStorage data displays (or "Storage data unavailable" on restricted pages)
+14. Verify third-party section displays at the bottom with badge count
+15. Click a segment header to collapse it — verify it collapses
+16. Click again to expand — verify it expands
+17. Click Delete on a cookie — verify it's removed and data refreshes
+18. Toggle "Delete on leave" — verify toggle changes state
+19. Navigate to about:newtab — verify "No domain data available" appears instantly
+20. Navigate to a normal website — verify data appears
+21. Verify sidebar renders properly at its default width (~300px)
+22. Verify scrolling works for long cookie/storage lists
+
+<strong>Detached Window Tests:</strong>
+23. Open detached window — verify identical content to sidebar
+24. Verify all panel functionality works: display, deletion, toggle, collapse
+25. Resize the window smaller — verify layout doesn't break
+26. Resize the window larger — verify layout adapts
+27. Switch active tab — verify detached window updates to new domain
+
+<strong>Cross-View Tests:</strong>
+28. Open sidebar AND detached window simultaneously — verify both show same data
+29. Switch active tab — verify both views update to new domain
+30. Navigate to a restricted URL — verify both show "No domain data available"
+31. Navigate back to a normal site — verify both show domain data
+`;
+    }
+
+    runTests();
+  </script>
+</body>
+</html>

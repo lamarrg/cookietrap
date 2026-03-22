@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RequestLogger Tests</title>
+  <style>
+    body { font-family: monospace; margin: 2em; background: #1a1a2e; color: #e0e0e0; }
+    h1 { color: #00d4ff; }
+    h2 { color: #aaa; margin-top: 2em; }
+    .pass { color: #4caf50; }
+    .fail { color: #f44336; font-weight: bold; }
+    .section { margin: 1em 0; padding: 1em; background: #16213e; border-radius: 4px; }
+    pre { background: #0f3460; padding: 1em; border-radius: 4px; overflow-x: auto; }
+    #summary { font-size: 1.2em; margin-top: 2em; padding: 1em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>RequestLogger Tests</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+  <h2>Manual Test Procedures</h2>
+  <div class="section">
+    <p>These tests must be run in Firefox via about:debugging with the extension loaded:</p>
+    <pre>
+1. Browse to a news site with many third-party scripts (e.g., cnn.com)
+   → Wait 4+ seconds for at least 2 batch cycles
+   → Check about:debugging > Storage > Extension Storage
+   → "thirdPartyRecords" key should contain attribution records
+
+2. Verify request type filtering
+   → Open Network tab, note request types
+   → Only script, xmlhttprequest, beacon, ping, sub_frame should appear in records
+   → image, font, stylesheet requests should NOT appear
+
+3. Deduplication test
+   → Load a page with many requests to the same third-party domain
+   → Verify one record per unique {thirdPartyDomain, cookieName, cookiePath} combo
+   → Not one record per request
+
+4. Persistence test
+   → Browse some sites, wait for batch to process
+   → Restart the extension via about:debugging
+   → Run in background console: RequestLogger.getThirdPartyRecords()
+   → Should return previously saved records
+
+5. Clear test
+   → Run in background console: RequestLogger.clearAllRecords()
+   → Run: RequestLogger.getThirdPartyRecords()
+   → Should return empty array
+   → Check storage — "thirdPartyRecords" key should be removed
+
+6. Verify batch logging
+   → Watch background console for "[DomainGuard] Batch processed:" messages
+   → Should appear every 2 seconds when there are requests to process
+    </pre>
+  </div>
+
+  <!-- Load DomainUtils dependency -->
+  <script src="../utils/domain.js"></script>
+
+  <script>
+    // Provide mock browser API so modules can load outside Firefox
+    if (typeof browser === "undefined") {
+      window.browser = {
+        tabs: {
+          query: () => Promise.resolve([]),
+          onCreated: { addListener: () => {} },
+          onUpdated: { addListener: () => {} },
+          onRemoved: { addListener: () => {} },
+        },
+        webRequest: {
+          onCompleted: { addListener: () => {} },
+        },
+        cookies: {
+          getAll: () => Promise.resolve([]),
+        },
+        storage: {
+          local: {
+            get: () => Promise.resolve({}),
+            set: () => Promise.resolve(),
+            remove: () => Promise.resolve(),
+          },
+        },
+      };
+    }
+  </script>
+
+  <!-- Load TabTracker dependency (needed by RequestLogger) -->
+  <script src="../background/tab-tracker.js"></script>
+
+  <!-- Load RequestLogger -->
+  <script src="../background/request-logger.js"></script>
+
+  <script>
+    const results = document.getElementById("results");
+    let passed = 0;
+    let failed = 0;
+
+    function assert(condition, description) {
+      if (condition) {
+        passed++;
+        results.innerHTML += `<div class="pass">&#10003; ${description}</div>`;
+      } else {
+        failed++;
+        results.innerHTML += `<div class="fail">&#10007; ${description}</div>`;
+      }
+    }
+
+    // --- Structural tests ---
+    assert(typeof RequestLogger === "object", "RequestLogger global exists");
+    assert(typeof RequestLogger.init === "function", "init is a function");
+    assert(typeof RequestLogger.getThirdPartyRecords === "function", "getThirdPartyRecords is a function");
+    assert(typeof RequestLogger.clearAllRecords === "function", "clearAllRecords is a function");
+
+    // --- Behavioral tests ---
+
+    async function runAsyncTests() {
+      // init() with mock APIs — should complete without error
+      await TabTracker.init();
+      await RequestLogger.init();
+      assert(true, "init() completes without error");
+
+      // After init with empty storage, records should be empty
+      const records = RequestLogger.getThirdPartyRecords();
+      assert(Array.isArray(records), "getThirdPartyRecords returns an array");
+      assert(records.length === 0, "getThirdPartyRecords returns empty array on fresh init");
+
+      // clearAllRecords should work without error
+      await RequestLogger.clearAllRecords();
+      assert(true, "clearAllRecords() completes without error");
+
+      const afterClear = RequestLogger.getThirdPartyRecords();
+      assert(afterClear.length === 0, "Records empty after clearAllRecords");
+
+      // --- Summary ---
+      const summary = document.getElementById("summary");
+      const total = passed + failed;
+      if (failed === 0) {
+        summary.innerHTML = `<span class="pass">All ${total} tests passed.</span>`;
+        summary.style.background = "#1b4332";
+      } else {
+        summary.innerHTML = `<span class="fail">${failed} of ${total} tests failed.</span>`;
+        summary.style.background = "#4a1a1a";
+      }
+    }
+
+    runAsyncTests();
+  </script>
+</body>
+</html>

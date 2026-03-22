@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DomainGuard</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="panel">
+    <!-- Restricted URL / error state -->
+    <div id="restricted-message" class="message hidden">
+      <p>No domain data available for this page.</p>
+    </div>
+
+    <!-- Normal content -->
+    <div id="content" class="hidden">
+      <!-- Header -->
+      <div id="header">
+        <h1 id="domain-name"></h1>
+      </div>
+
+      <!-- Top Section: This Domain's Data -->
+      <div id="top-section">
+        <div class="section-header">
+          <span class="section-title">This Domain's Data</span>
+          <label class="toggle-label">
+            <span class="toggle-text">Delete on leave</span>
+            <input type="checkbox" id="toggle-delete-on-leave">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Cookies Segment -->
+        <div class="segment" id="segment-cookies">
+          <div class="segment-header" data-segment="cookies">
+            <span class="segment-arrow">&#9654;</span>
+            <span class="segment-name">Cookies</span>
+            <span class="badge" id="badge-cookies">0</span>
+            <button class="btn-delete-all" data-action="delete-all-cookies">Delete All</button>
+          </div>
+          <div class="segment-body">
+            <ul class="item-list" id="list-cookies"></ul>
+          </div>
+        </div>
+
+        <!-- Local Storage Segment -->
+        <div class="segment" id="segment-local-storage">
+          <div class="segment-header" data-segment="local-storage">
+            <span class="segment-arrow">&#9654;</span>
+            <span class="segment-name">Local Storage</span>
+            <span class="badge" id="badge-local-storage">0</span>
+            <button class="btn-delete-all" data-action="clear-local-storage">Delete All</button>
+          </div>
+          <div class="segment-body">
+            <ul class="item-list" id="list-local-storage"></ul>
+            <p class="unavailable-message hidden">Storage data unavailable</p>
+          </div>
+        </div>
+
+        <!-- Session Storage Segment -->
+        <div class="segment" id="segment-session-storage">
+          <div class="segment-header" data-segment="session-storage">
+            <span class="segment-arrow">&#9654;</span>
+            <span class="segment-name">Session Storage</span>
+            <span class="badge" id="badge-session-storage">0</span>
+            <button class="btn-delete-all" data-action="clear-session-storage">Delete All</button>
+          </div>
+          <div class="segment-body">
+            <ul class="item-list" id="list-session-storage"></ul>
+            <p class="unavailable-message hidden">Storage data unavailable</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Section: Third-Party / Other Data -->
+      <div id="bottom-section">
+        <div class="section-header">
+          <span class="section-title">Third-Party / Other Data</span>
+          <span class="badge" id="badge-third-party">0</span>
+          <button class="btn-delete-all" id="btn-delete-all-third-party">Delete All</button>
+        </div>
+        <div id="third-party-container">
+          <ul class="item-list" id="list-third-party"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../utils/domain.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
