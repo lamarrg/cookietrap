@@ -2,6 +2,14 @@
 
 A Firefox extension that shows you what data websites store on your browser — and lets you delete it.
 
+## Why DomainGuard?
+
+DomainGuard isn't trying to reinvent the wheel — it's trying to show you how much data that wheel is quietly collecting. Some of it helps websites work properly, but a lot of it exists to track and market to you.
+
+This extension doesn't replace your browser's built-in privacy settings. It just holds the curtain open so you can see what's there and decide what stays.
+
+**One thing to know:** Deleting cookies can sign you out of sites. If that happens, a password manager like Apple's Passwords, 1Password, or Bitwarden makes logging back in easy.
+
 ## What it does
 
 - **See what sites store** — View cookies, localStorage, and sessionStorage for any site you visit, right from your browser sidebar
