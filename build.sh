@@ -1,11 +1,11 @@
 #!/bin/bash
-# Build script — packages DomainGuard for Firefox Add-ons (AMO) submission.
-# Produces domainguard-<version>.zip in the current directory.
+# Build script — packages CookieTrap for Firefox Add-ons (AMO) submission.
+# Produces cookietrap-<version>.zip in the current directory.
 
 set -e
 
 VERSION=$(grep '"version"' manifest.json | head -1 | sed 's/.*: *"\(.*\)".*/\1/')
-OUTPUT="domainguard-${VERSION}.zip"
+OUTPUT="cookietrap-${VERSION}.zip"
 
 # Remove old build if present
 rm -f "$OUTPUT"

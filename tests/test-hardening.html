@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>DomainGuard — M8 Hardening Tests</title>
+  <title>CookieTrap — M8 Hardening Tests</title>
   <style>
     body { font-family: monospace; font-size: 14px; padding: 16px; }
     .pass { color: green; }
@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h1>DomainGuard — M8 Hardening Tests</h1>
+  <h1>CookieTrap — M8 Hardening Tests</h1>
   <p>Structural assertions verifying error handling, storage quota pruning, bot detection validation, and graceful degradation.</p>
   <div id="results"></div>
 
@@ -245,30 +245,30 @@
       // ========== 8. CONSOLE LOGGING STANDARDS ==========
       results.innerHTML += "<h2>8. Console Logging Standards</h2>\n";
 
-      assert("deletion.js uses [DomainGuard] prefix in console.log",
-        /console\.log\(\s*["'`]\[DomainGuard\]/.test(deletionJs));
+      assert("deletion.js uses [CookieTrap] prefix in console.log",
+        /console\.log\(\s*["'`]\[CookieTrap\]/.test(deletionJs));
 
-      assert("deletion.js uses [DomainGuard] prefix in console.error",
-        /console\.error\(\s*["'`]\[DomainGuard\]/.test(deletionJs));
+      assert("deletion.js uses [CookieTrap] prefix in console.error",
+        /console\.error\(\s*["'`]\[CookieTrap\]/.test(deletionJs));
 
-      assert("main.js uses [DomainGuard] prefix",
-        /console\.(log|error|warn)\(\s*["'`]\[DomainGuard\]/.test(mainJs));
+      assert("main.js uses [CookieTrap] prefix",
+        /console\.(log|error|warn)\(\s*["'`]\[CookieTrap\]/.test(mainJs));
 
       let tabTrackerJs = "";
       try {
         const resp = await fetch("../background/tab-tracker.js");
         tabTrackerJs = await resp.text();
       } catch (e) {}
-      assert("tab-tracker.js uses [DomainGuard] prefix",
-        /console\.(log|error|warn)\(\s*["'`]\[DomainGuard\]/.test(tabTrackerJs));
+      assert("tab-tracker.js uses [CookieTrap] prefix",
+        /console\.(log|error|warn)\(\s*["'`]\[CookieTrap\]/.test(tabTrackerJs));
 
       let requestLoggerJs = "";
       try {
         const resp = await fetch("../background/request-logger.js");
         requestLoggerJs = await resp.text();
       } catch (e) {}
-      assert("request-logger.js uses [DomainGuard] prefix",
-        /console\.(log|error|warn)\(\s*["'`]\[DomainGuard\]/.test(requestLoggerJs));
+      assert("request-logger.js uses [CookieTrap] prefix",
+        /console\.(log|error|warn)\(\s*["'`]\[CookieTrap\]/.test(requestLoggerJs));
 
       // ========== SUMMARY ==========
       results.innerHTML += "\n<hr>\n";
@@ -293,7 +293,7 @@
       results.innerHTML += '7. Navigate to about:newtab — "No domain data available" appears instantly\n';
       results.innerHTML += '8. On unresponsive content script page — 2s timeout shows "Storage data unavailable"\n';
       results.innerHTML += "9. Force cookie delete failure — verify error flash appears, auto-dismisses in 3s\n";
-      results.innerHTML += "10. Force browsingData.remove failure — verify [DomainGuard] error in console\n";
+      results.innerHTML += "10. Force browsingData.remove failure — verify [CookieTrap] error in console\n";
       results.innerHTML += "11. Force cookies.getAll failure in batch — verify error logged, rest of batch continues\n\n";
 
       results.innerHTML += "<h3>M-3: Storage Quota</h3>\n";

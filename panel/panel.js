@@ -51,7 +51,7 @@
     setupEventListeners();
     await loadTab(tab);
 
-    if (DEBUG) console.log("[DomainGuard] Panel loaded for domain:", currentDomain);
+    if (DEBUG) console.log("[CookieTrap] Panel loaded for domain:", currentDomain);
   }
 
   function setupEventListeners() {
@@ -207,7 +207,7 @@
       });
       renderCookies(cookies || []);
     } catch (e) {
-      if (DEBUG) console.warn("[DomainGuard] Failed to fetch cookies:", e);
+      if (DEBUG) console.warn("[CookieTrap] Failed to fetch cookies:", e);
       renderCookies([]);
     }
   }
@@ -235,7 +235,7 @@
       // Stale check — don't update UI if tab changed
       if (currentTabId !== myTabId) return;
 
-      if (DEBUG) console.warn("[DomainGuard] Storage data unavailable — timeout or error");
+      if (DEBUG) console.warn("[CookieTrap] Storage data unavailable — timeout or error");
       showStorageUnavailable();
     }
   }
@@ -249,7 +249,7 @@
       });
       toggleCheckbox.checked = enabled;
     } catch (e) {
-      if (DEBUG) console.warn("[DomainGuard] Failed to fetch toggle state:", e);
+      if (DEBUG) console.warn("[CookieTrap] Failed to fetch toggle state:", e);
       toggleCheckbox.checked = true; // Default ON
     }
   }
@@ -269,7 +269,7 @@
         renderMoreThirdParty();
       }
     } catch (e) {
-      if (DEBUG) console.warn("[DomainGuard] Failed to fetch third-party records:", e);
+      if (DEBUG) console.warn("[CookieTrap] Failed to fetch third-party records:", e);
       thirdPartyRecords = [];
       badgeThirdParty.textContent = "0";
       listThirdParty.innerHTML = '<li class="empty-message">No third-party data recorded</li>';

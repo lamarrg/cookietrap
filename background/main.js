@@ -8,7 +8,7 @@
 
   const DEBUG = false;
 
-  if (DEBUG) console.log("[DomainGuard] Extension loaded.");
+  if (DEBUG) console.log("[CookieTrap] Extension loaded.");
 
   // Sequential init — each module must be ready before the next starts
   await TabTracker.init();
@@ -55,7 +55,7 @@
       Deletion.deleteCookie(message.cookie).then((result) => {
         sendResponse(result || { success: true });
       }).catch((e) => {
-        console.error("[DomainGuard] delete-cookie handler error:", e);
+        console.error("[CookieTrap] delete-cookie handler error:", e);
         sendResponse({ success: false, error: e.message || "Deletion failed" });
       });
       return true;
@@ -72,7 +72,7 @@
           }
           sendResponse({ success: failCount === 0, count: cookies.length, failCount: failCount });
         } catch (e) {
-          console.error("[DomainGuard] delete-all-cookies handler error:", e);
+          console.error("[CookieTrap] delete-all-cookies handler error:", e);
           sendResponse({ success: false, error: e.message || "Deletion failed" });
         }
       })();
@@ -83,7 +83,7 @@
       Deletion.deleteStorageItem(message.tabId, message.storageType, message.key).then((result) => {
         sendResponse(result || { success: true });
       }).catch((e) => {
-        console.error("[DomainGuard] delete-storage-item handler error:", e);
+        console.error("[CookieTrap] delete-storage-item handler error:", e);
         sendResponse({ success: false, error: e.message || "Deletion failed" });
       });
       return true;
@@ -93,7 +93,7 @@
       Deletion.clearStorage(message.tabId, message.storageType).then((result) => {
         sendResponse(result || { success: true });
       }).catch((e) => {
-        console.error("[DomainGuard] clear-storage handler error:", e);
+        console.error("[CookieTrap] clear-storage handler error:", e);
         sendResponse({ success: false, error: e.message || "Deletion failed" });
       });
       return true;
@@ -116,7 +116,7 @@
             sendResponse({ success: true });
           }
         } catch (e) {
-          console.error("[DomainGuard] delete-third-party-cookie handler error:", e);
+          console.error("[CookieTrap] delete-third-party-cookie handler error:", e);
           sendResponse({ success: false, error: e.message || "Deletion failed" });
         }
       })();
@@ -140,7 +140,7 @@
               });
             }
           } catch (e) {
-            if (DEBUG) console.warn("[DomainGuard] Failed to delete third-party cookies for", domain, e);
+            if (DEBUG) console.warn("[CookieTrap] Failed to delete third-party cookies for", domain, e);
           }
         }
         await RequestLogger.clearAllRecords();
@@ -161,5 +161,5 @@
     return false;
   });
 
-  if (DEBUG) console.log("[DomainGuard] Message router registered.");
+  if (DEBUG) console.log("[CookieTrap] Message router registered.");
 })();

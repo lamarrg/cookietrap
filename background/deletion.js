@@ -56,7 +56,7 @@ const Deletion = (() => {
         storeId: cookie.storeId,
       });
     } catch (e) {
-      console.error("[DomainGuard] Failed to delete cookie:", cookie.name, "from", cookie.domain, e);
+      console.error("[CookieTrap] Failed to delete cookie:", cookie.name, "from", cookie.domain, e);
       return { success: false, error: e.message || "Cookie deletion failed" };
     }
     await broadcastDeletion({
@@ -64,7 +64,7 @@ const Deletion = (() => {
       domain: DomainUtils.stripLeadingDot(cookie.domain),
       cookieName: cookie.name,
     });
-    if (DEBUG) console.log("[DomainGuard] Deleted cookie:", cookie.name, "from", cookie.domain);
+    if (DEBUG) console.log("[CookieTrap] Deleted cookie:", cookie.name, "from", cookie.domain);
     return { success: true };
   }
 
@@ -82,7 +82,7 @@ const Deletion = (() => {
         key: key,
       });
     } catch (e) {
-      console.error("[DomainGuard] Failed to delete storage item:", key, e);
+      console.error("[CookieTrap] Failed to delete storage item:", key, e);
       return { success: false, error: e.message || "Storage item deletion failed" };
     }
     await broadcastDeletion({
@@ -90,7 +90,7 @@ const Deletion = (() => {
       storageType: storageType,
       key: key,
     });
-    if (DEBUG) console.log("[DomainGuard] Deleted", storageType, "storage item:", key);
+    if (DEBUG) console.log("[CookieTrap] Deleted", storageType, "storage item:", key);
     return { success: true };
   }
 
@@ -106,14 +106,14 @@ const Deletion = (() => {
         storageType: storageType,
       });
     } catch (e) {
-      console.error("[DomainGuard] Failed to clear", storageType, "storage:", e);
+      console.error("[CookieTrap] Failed to clear", storageType, "storage:", e);
       return { success: false, error: e.message || "Storage clear failed" };
     }
     await broadcastDeletion({
       action: "clear-storage",
       storageType: storageType,
     });
-    if (DEBUG) console.log("[DomainGuard] Cleared", storageType, "storage");
+    if (DEBUG) console.log("[CookieTrap] Cleared", storageType, "storage");
     return { success: true };
   }
 
@@ -129,7 +129,7 @@ const Deletion = (() => {
    * Does NOT touch third-party data (bottom section).
    */
   async function autoDeleteForDomain(baseDomain) {
-    if (DEBUG) console.log("[DomainGuard] Auto-deleting data for", baseDomain);
+    if (DEBUG) console.log("[CookieTrap] Auto-deleting data for", baseDomain);
 
     // Delete cookies
     try {
@@ -142,9 +142,9 @@ const Deletion = (() => {
           storeId: cookie.storeId,
         });
       }
-      if (DEBUG) console.log("[DomainGuard] Auto-deleted", cookies.length, "cookies for", baseDomain);
+      if (DEBUG) console.log("[CookieTrap] Auto-deleted", cookies.length, "cookies for", baseDomain);
     } catch (e) {
-      console.error("[DomainGuard] Failed to auto-delete cookies for", baseDomain, e);
+      console.error("[CookieTrap] Failed to auto-delete cookies for", baseDomain, e);
     }
 
     // Delete localStorage and sessionStorage via browsingData API
@@ -158,9 +158,9 @@ const Deletion = (() => {
           sessionStorage: true,
         }
       );
-      if (DEBUG) console.log("[DomainGuard] Auto-deleted storage for", baseDomain);
+      if (DEBUG) console.log("[CookieTrap] Auto-deleted storage for", baseDomain);
     } catch (e) {
-      console.error("[DomainGuard] Failed to auto-delete storage for", baseDomain, e);
+      console.error("[CookieTrap] Failed to auto-delete storage for", baseDomain, e);
     }
 
     await broadcastDeletion({
@@ -194,7 +194,7 @@ const Deletion = (() => {
     toggleState.set(baseDomain, enabled);
     await saveToggles();
     await broadcastToggleChange(baseDomain, enabled);
-    if (DEBUG) console.log("[DomainGuard] Toggle for", baseDomain, "set to", enabled);
+    if (DEBUG) console.log("[CookieTrap] Toggle for", baseDomain, "set to", enabled);
   }
 
   /**
@@ -220,7 +220,7 @@ const Deletion = (() => {
     try {
       await browser.storage.local.set({ [TOGGLE_STORAGE_KEY]: obj });
     } catch (e) {
-      console.error("[DomainGuard] Failed to save toggle state:", e);
+      console.error("[CookieTrap] Failed to save toggle state:", e);
     }
   }
 
@@ -234,7 +234,7 @@ const Deletion = (() => {
         }
       }
     } catch (e) {
-      console.error("[DomainGuard] Failed to load toggle state:", e);
+      console.error("[CookieTrap] Failed to load toggle state:", e);
     }
   }
 
@@ -247,7 +247,7 @@ const Deletion = (() => {
    */
   async function init() {
     await loadToggles();
-    if (DEBUG) console.log("[DomainGuard] Deletion initialized —", toggleState.size, "domain toggles loaded");
+    if (DEBUG) console.log("[CookieTrap] Deletion initialized —", toggleState.size, "domain toggles loaded");
   }
 
   return {

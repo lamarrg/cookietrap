@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>DomainGuard — Popup &amp; Sidebar Tests</title>
+  <title>CookieTrap — Popup &amp; Sidebar Tests</title>
   <style>
     body { font-family: monospace; font-size: 14px; padding: 16px; }
     .pass { color: green; }
@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h1>DomainGuard — Popup &amp; Sidebar Tests</h1>
+  <h1>CookieTrap — Popup &amp; Sidebar Tests</h1>
   <p>Structural assertions that verify popup and sidebar files exist and have the expected shape.</p>
   <div id="results"></div>
 
@@ -67,8 +67,8 @@
           html.includes('<button') && html.includes('btn-window'));
 
         // Has a title or heading
-        assert("popup.html has DomainGuard heading",
-          html.includes('DomainGuard'));
+        assert("popup.html has CookieTrap heading",
+          html.includes('CookieTrap'));
 
         // Has inline styles or linked stylesheet
         assert("popup.html has styling (inline <style> block)",
@@ -136,9 +136,9 @@
         assert("popup.js specifies window height (~600)",
           code.includes('height:'));
 
-        // Uses [DomainGuard] console prefix
-        assert("popup.js uses [DomainGuard] console prefix",
-          code.includes('[DomainGuard]'));
+        // Uses [CookieTrap] console prefix
+        assert("popup.js uses [CookieTrap] console prefix",
+          code.includes('[CookieTrap]'));
 
         // Uses addEventListener (not onclick)
         assert("popup.js uses addEventListener for click handlers",
@@ -229,7 +229,7 @@
       results.innerHTML += `\n<hr>\n<h2>Manual Test Procedures (in Firefox via about:debugging)</h2>\n`;
       results.innerHTML += `
 <strong>Popup Tests:</strong>
-1. Click the DomainGuard icon in the toolbar — verify popup appears with "DomainGuard" heading and two buttons
+1. Click the CookieTrap icon in the toolbar — verify popup appears with "CookieTrap" heading and two buttons
 2. Verify popup is compact and cleanly styled (~220px wide)
 3. Click "Open Sidebar" — verify sidebar opens with full panel UI showing current domain data
 4. Verify popup dismisses immediately after clicking "Open Sidebar"

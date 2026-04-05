@@ -34,7 +34,7 @@ const TabTracker = (() => {
     if (closeTimers.has(domain)) {
       clearTimeout(closeTimers.get(domain));
       closeTimers.delete(domain);
-      if (DEBUG) console.log("[DomainGuard] Close timer cancelled for", domain);
+      if (DEBUG) console.log("[CookieTrap] Close timer cancelled for", domain);
     }
   }
 
@@ -61,14 +61,14 @@ const TabTracker = (() => {
 
     const timerId = setTimeout(() => {
       closeTimers.delete(domain);
-      if (DEBUG) console.log("[DomainGuard] Domain closed:", domain);
+      if (DEBUG) console.log("[CookieTrap] Domain closed:", domain);
       if (domainClosedCallback) {
         domainClosedCallback(domain);
       }
     }, 500);
 
     closeTimers.set(domain, timerId);
-    if (DEBUG) console.log("[DomainGuard] Close timer started for", domain);
+    if (DEBUG) console.log("[CookieTrap] Close timer started for", domain);
   }
 
   /**
@@ -167,7 +167,7 @@ const TabTracker = (() => {
     browser.tabs.onUpdated.addListener(onTabUpdated);
     browser.tabs.onRemoved.addListener(onTabRemoved);
 
-    if (DEBUG) console.log("[DomainGuard] TabTracker initialized —", tabToDomain.size, "tabs tracked across", domainTabCount.size, "domains");
+    if (DEBUG) console.log("[CookieTrap] TabTracker initialized —", tabToDomain.size, "tabs tracked across", domainTabCount.size, "domains");
   }
 
   return { getDomainForTab, getTabCount, onDomainClosed, init };

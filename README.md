@@ -1,10 +1,10 @@
-# DomainGuard
+# CookieTrap
 
 A Firefox extension that shows you what data websites store on your browser — and lets you delete it.
 
-## Why DomainGuard?
+## Why CookieTrap?
 
-DomainGuard isn't trying to reinvent the wheel — it's trying to show you how much data that wheel is quietly collecting. Some of it helps websites work properly, but a lot of it exists to track and market to you.
+CookieTrap isn't trying to reinvent the wheel — it's trying to show you how much data that wheel is quietly collecting. Some of it helps websites work properly, but a lot of it exists to track and market to you.
 
 This extension doesn't replace your browser's built-in privacy settings. It just holds the curtain open so you can see what's there and decide what stays.
 
@@ -14,18 +14,18 @@ This extension doesn't replace your browser's built-in privacy settings. It just
 
 - **See what sites store** — View cookies, localStorage, and sessionStorage for any site you visit, right from your browser sidebar
 - **Delete data on demand** — Remove individual items or clear everything a site has stored with one click
-- **Auto-delete on leave** — Turn on "delete on leave" for any domain, and DomainGuard wipes its data when you close the last tab for that site
+- **Auto-delete on leave** — Turn on "delete on leave" for any domain, and CookieTrap wipes its data when you close the last tab for that site
 - **Spot third-party trackers** — See which third-party domains are setting cookies as you browse, and where they came from
 
 ## How to install
 
-DomainGuard isn't on the Firefox Add-ons store yet, so you'll load it as a temporary add-on:
+CookieTrap isn't on the Firefox Add-ons store yet, so you'll load it as a temporary add-on:
 
 1. Clone or download this repository
 2. Open Firefox and go to `about:debugging#/runtime/this-firefox`
 3. Click **Load Temporary Add-on...**
 4. Select any file in the repository folder (e.g., `manifest.json`)
-5. DomainGuard's icon appears in your toolbar — you're ready to go
+5. CookieTrap's icon appears in your toolbar — you're ready to go
 
 No build step needed. The extension runs directly from the source files.
 
@@ -33,7 +33,7 @@ No build step needed. The extension runs directly from the source files.
 
 ## What to expect
 
-**Opening the panel** — Click the DomainGuard icon in your toolbar. You'll get two options:
+**Opening the panel** — Click the CookieTrap icon in your toolbar. You'll get two options:
 
 - **Open in sidebar** — Shows the panel docked to the side of your browser window
 - **Open in window** — Opens a detached panel you can position anywhere
@@ -48,6 +48,6 @@ The panel updates automatically as you switch tabs and as data changes.
 
 ## Current status
 
-DomainGuard is in active development. All core features are implemented and working. It is not yet available on the Firefox Add-ons store.
+CookieTrap is in active development. All core features are implemented and working. It is not yet available on the Firefox Add-ons store.
 
 Firefox only (Manifest V2).

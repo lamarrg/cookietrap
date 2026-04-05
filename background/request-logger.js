@@ -96,7 +96,7 @@ const RequestLogger = (() => {
           cookiesByDomain.set(domain, cookies);
         }
       } catch (e) {
-        if (DEBUG) console.warn("[DomainGuard] Cookie lookup failed for", domain, e);
+        if (DEBUG) console.warn("[CookieTrap] Cookie lookup failed for", domain, e);
       }
     }
 
@@ -142,7 +142,7 @@ const RequestLogger = (() => {
     await saveRecords();
 
     if (DEBUG) console.log(
-      "[DomainGuard] Batch processed:",
+      "[CookieTrap] Batch processed:",
       batch.length,
       "requests,",
       uniquePairs.size,
@@ -165,7 +165,7 @@ const RequestLogger = (() => {
       }
     }
     if (pruned > 0) {
-      if (DEBUG) console.log("[DomainGuard] Pruned", pruned, "records older than 30 days");
+      if (DEBUG) console.log("[CookieTrap] Pruned", pruned, "records older than 30 days");
     }
   }
 
@@ -177,7 +177,7 @@ const RequestLogger = (() => {
     try {
       await browser.storage.local.set({ [STORAGE_KEY]: arr });
     } catch (e) {
-      console.error("[DomainGuard] Failed to save records:", e);
+      console.error("[CookieTrap] Failed to save records:", e);
     }
   }
 
@@ -200,7 +200,7 @@ const RequestLogger = (() => {
         }
       }
     } catch (e) {
-      console.error("[DomainGuard] Failed to load records:", e);
+      console.error("[CookieTrap] Failed to load records:", e);
     }
   }
 
@@ -221,9 +221,9 @@ const RequestLogger = (() => {
     try {
       await browser.storage.local.remove(STORAGE_KEY);
     } catch (e) {
-      console.error("[DomainGuard] Failed to clear records:", e);
+      console.error("[CookieTrap] Failed to clear records:", e);
     }
-    if (DEBUG) console.log("[DomainGuard] All third-party records cleared");
+    if (DEBUG) console.log("[CookieTrap] All third-party records cleared");
   }
 
   /**
@@ -240,7 +240,7 @@ const RequestLogger = (() => {
     setInterval(processBatch, BATCH_INTERVAL_MS);
 
     if (DEBUG) console.log(
-      "[DomainGuard] RequestLogger initialized —",
+      "[CookieTrap] RequestLogger initialized —",
       records.size,
       "records loaded"
     );

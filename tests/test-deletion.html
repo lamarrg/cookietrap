@@ -56,7 +56,7 @@
    → Find a cookie: let cookies = await browser.cookies.getAll({domain: "walmart.com"})
    → Delete it: await Deletion.deleteCookie(cookies[0])
    → Verify gone: await browser.cookies.getAll({domain: "walmart.com"})
-   → Watch for "[DomainGuard] Deleted cookie:" log message
+   → Watch for "[CookieTrap] Deleted cookie:" log message
 
 6. Secure vs non-secure cookie URLs
    → Find a secure cookie (secure: true)
@@ -76,7 +76,7 @@
    → Close all walmart.com tabs
    → Wait ~1 second (500ms TabTracker delay + deletion)
    → Check: await browser.cookies.getAll({domain: "walmart.com"}) → should be empty
-   → Watch for "[DomainGuard] Auto-deleting data for walmart.com" log
+   → Watch for "[CookieTrap] Auto-deleting data for walmart.com" log
 
 9. Toggle OFF, close all tabs
    → Open a site, wait for cookies

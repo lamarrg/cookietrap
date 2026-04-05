@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>DomainGuard — Panel UI Tests</title>
+  <title>CookieTrap — Panel UI Tests</title>
   <style>
     body { font-family: monospace; font-size: 14px; padding: 16px; }
     .pass { color: green; }
@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h1>DomainGuard — Panel UI Tests</h1>
+  <h1>CookieTrap — Panel UI Tests</h1>
   <p>Structural assertions that verify panel files exist and have the expected shape.</p>
   <div id="results"></div>
 
@@ -142,8 +142,8 @@
           js.includes("browser.tabs.onUpdated"));
         assert("panel.js has lazy rendering for third-party",
           js.includes("THIRD_PARTY_BATCH_SIZE"));
-        assert("panel.js uses [DomainGuard] console prefix",
-          js.includes("[DomainGuard]"));
+        assert("panel.js uses [CookieTrap] console prefix",
+          js.includes("[CookieTrap]"));
         assert("panel.js sends delete-cookie messages",
           js.includes('"delete-cookie"'));
         assert("panel.js sends delete-all-cookies messages",

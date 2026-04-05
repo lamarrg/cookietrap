@@ -1,26 +1,26 @@
-# DomainGuard Privacy Policy
+# CookieTrap Privacy Policy
 
 **Last updated:** April 2026
 
 ## Summary
 
-DomainGuard operates entirely within your browser. It does not collect, transmit, or share any data with external servers. All data stays on your device.
+CookieTrap operates entirely within your browser. It does not collect, transmit, or share any data with external servers. All data stays on your device.
 
-## What Data DomainGuard Accesses
+## What Data CookieTrap Accesses
 
-DomainGuard accesses the following browser data to provide its functionality:
+CookieTrap accesses the following browser data to provide its functionality:
 
 - **Cookies:** Reads cookie names, values, and metadata (domain, path, expiration) for the sites you visit, so you can view and delete them.
 - **localStorage and sessionStorage:** Reads storage keys and values for the active tab's site via a content script, so you can view and delete them.
 - **Network requests:** Observes request URLs (not content or headers) to identify third-party domains that set cookies while you browse.
 - **Tab information:** Tracks which domains are open in your tabs to enable the auto-delete-on-leave feature.
 
-## What Data DomainGuard Stores
+## What Data CookieTrap Stores
 
 - **Third-party attribution records:** Domain name, cookie name, cookie path, and which first-party sites the third-party was observed on. Stored in `browser.storage.local`. Records older than 30 days are automatically pruned. Maximum 5,000 records retained.
 - **Per-domain toggle settings:** Whether auto-delete-on-leave is enabled or disabled for each domain. Stored in `browser.storage.local`.
 
-## What DomainGuard Does NOT Do
+## What CookieTrap Does NOT Do
 
 - Does not send any data to external servers, APIs, or third parties.
 - Does not include analytics, telemetry, or crash reporting.
